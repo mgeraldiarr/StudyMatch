@@ -24,22 +24,30 @@
             <h2>Akun &amp; Profil</h2>
           </div>
           <div class="card">
-            <div class="form-grid">
-              <div class="form-field">
-                <label class="form-label">Alamat Email</label>
-                <input class="form-input" type="email" value="geraldiarisyi27@gmail.com" />
+            <form id="accountForm" onsubmit="saveAccountSettings(event)">
+              <div class="form-grid">
+                <div class="form-field">
+                  <label class="form-label">Alamat Email</label>
+                  <input class="form-input" id="accEmail" type="email" value="{{ auth()->user()->email }}" required />
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Status Akademik</label>
+                  <select class="form-select" id="accAcademicStatus">
+                    <option value="Mahasiswa Sarjana (S1)" {{ (auth()->user()->academic_status == 'Mahasiswa Sarjana (S1)' || empty(auth()->user()->academic_status)) ? 'selected' : '' }}>Mahasiswa Sarjana (S1)</option>
+                    <option value="Mahasiswa Pascasarjana (S2/S3)" {{ auth()->user()->academic_status == 'Mahasiswa Pascasarjana (S2/S3)' ? 'selected' : '' }}>Mahasiswa Pascasarjana (S2/S3)</option>
+                    <option value="Dosen / Peneliti" {{ auth()->user()->academic_status == 'Dosen / Peneliti' ? 'selected' : '' }}>Dosen / Peneliti</option>
+                    <option value="Alumni" {{ auth()->user()->academic_status == 'Alumni' ? 'selected' : '' }}>Alumni</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label class="form-label">Password Baru (opsional)</label>
+                  <input class="form-input" id="accPassword" type="password" placeholder="Kosongkan jika tidak ingin mengubah password" />
+                </div>
               </div>
-              <div class="form-field">
-                <label class="form-label">Status Akademik</label>
-                <select class="form-select">
-                  <option>Mahasiswa Sarjana (S1)</option>
-                  <option>Mahasiswa Pascasarjana (S2/S3)</option>
-                  <option>Dosen / Peneliti</option>
-                  <option>Alumni</option>
-                </select>
+              <div style="margin-top: 1.25rem; display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary" id="btnSaveAccount">Simpan Perubahan</button>
               </div>
-            </div>
-            <button class="btn btn-secondary" onclick="toast('Tautan pengaturan ulang sandi telah dikirim ke email!', 'success')">Atur Ulang Sandi</button>
+            </form>
           </div>
         </section>
 
@@ -50,6 +58,19 @@
             <h2>Privasi &amp; Visibilitas</h2>
           </div>
           <div class="card toggle-list">
+            <div class="toggle-row">
+              <div class="toggle-info">
+                <p>Tunjukkan Status Aktif</p>
+                <p>Biarkan teman belajar melihat ketika kamu sedang online.</p>
+              </div>
+              <label class="toggle-wrap">
+                <input type="checkbox" id="privacyOnlineToggle" {{ auth()->user()->is_online ? 'checked' : '' }} onchange="toggleOnlineStatus(this.checked)" />
+                <div class="toggle-track">
+                  <div class="toggle-thumb"></div>
+                </div>
+              </label>
+            </div>
+
             <div class="toggle-row">
               <div class="toggle-info">
                 <p>Buat Profil Publik</p>
@@ -67,26 +88,13 @@
 
             <div class="toggle-row">
               <div class="toggle-info">
-                <p>Tunjukkan Status Aktif</p>
-                <p>Biarkan teman belajar melihat ketika kamu sedang online.</p>
-              </div>
-              <label class="toggle-wrap">
-                <input type="checkbox" checked />
-                <div class="toggle-track">
-                  <div class="toggle-thumb"></div>
-                </div>
-              </label>
-            </div>
-
-            <div class="toggle-row">
-              <div class="toggle-info">
                 <p>Izinkan Pesan Langsung dari Siapa Saja</p>
                 <p>
-                  Aktifkan perpesanan dari mahasiswa di luar universitas atau kelompok belajarmu.
+                  Aktifkan perpesanan dari mahasiswa di luar kelompok belajarmu.
                 </p>
               </div>
               <label class="toggle-wrap">
-                <input type="checkbox" />
+                <input type="checkbox" checked />
                 <div class="toggle-track">
                   <div class="toggle-thumb"></div>
                 </div>
@@ -223,5 +231,3 @@
       </div>
     </div>
 @endsection
-
-

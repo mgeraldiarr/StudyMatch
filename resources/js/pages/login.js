@@ -202,24 +202,23 @@ function showToast(msg, type = "success") {
 }
 
 /* ── Handlers ── */
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 function handleGoogle() {
   showToast("Menghubungkan ke Google…");
   setTimeout(() => {
-    // 🔧 PERBAIKAN: Tambahkan redirect ke discovery.html
-    showSuccess(
-      "Berhasil masuk!",
-      "Mengarahkan ke dashboard…",
-      "/discovery",
-    );
-    showToast("Selamat datang di StudyMatch 🎉");
-  }, 2000);
+    showToast("Fitur login Google akan segera hadir via Socialite!", "info");
+  }, 1200);
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
   clearAllMessages();
   const email = document.getElementById("login-email").value.trim();
   const pw = document.getElementById("login-password").value;
+  const remember = document.getElementById("remember-me")?.checked || false;
   let valid = true;
 
   if (!email) {
@@ -243,19 +242,47 @@ function handleLogin(e) {
   if (!valid) return;
 
   setLoading("login-submit", true);
-  setTimeout(() => {
+
+  try {
+    const res = await fetch("/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({ email, password: pw, remember }),
+    });
+
+    const data = await res.json();
     setLoading("login-submit", false);
-    // 🔧 PERBAIKAN: Tambahkan redirect ke discovery.html
-    showSuccess(
-      "Selamat datang kembali! 👋",
-      "Mengarahkan ke dashboard…",
-      "/discovery",
-    );
-    showToast("Berhasil masuk ke StudyMatch");
-  }, 1800);
+
+    if (res.ok && data.success) {
+      showSuccess(
+        "Selamat datang kembali! 👋",
+        "Mengarahkan ke dashboard…",
+        data.redirect || "/discovery"
+      );
+      showToast(data.message || "Berhasil masuk ke StudyMatch", "success");
+    } else {
+      const errMsg = data.message || "Email atau password salah.";
+      if (data.errors?.email) {
+        showMsg("login-email-msg", data.errors.email[0], "error");
+        document.getElementById("login-email").classList.add("is-error");
+      }
+      if (data.errors?.password) {
+        showMsg("login-pw-msg", data.errors.password[0], "error");
+        document.getElementById("login-password").classList.add("is-error");
+      }
+      showToast(errMsg, "error");
+    }
+  } catch (err) {
+    setLoading("login-submit", false);
+    showToast("Terjadi kesalahan koneksi server. Coba lagi.", "error");
+  }
 }
 
-function handleRegister(e) {
+async function handleRegister(e) {
   e.preventDefault();
   clearAllMessages();
   const name = document.getElementById("reg-name").value.trim();
@@ -281,16 +308,47 @@ function handleRegister(e) {
   if (!valid) return;
 
   setLoading("register-submit", true);
-  setTimeout(() => {
+
+  try {
+    const res = await fetch("/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({ name, email, password: pw }),
+    });
+
+    const data = await res.json();
     setLoading("register-submit", false);
-    // 🔧 PERBAIKAN: Redirect ke profile setup atau discovery
-    showSuccess(
-      "Akun berhasil dibuat! 🎉",
-      "Mengarahkan ke setup profil…",
-      "/setup-profile",
-    );
-    showToast("Selamat bergabung di StudyMatch!");
-  }, 2000);
+
+    if (res.ok && data.success) {
+      showSuccess(
+        "Akun berhasil dibuat! 🎉",
+        "Mengarahkan ke setup profil…",
+        data.redirect || "/setup-profile"
+      );
+      showToast(data.message || "Selamat bergabung di StudyMatch!", "success");
+    } else {
+      if (data.errors?.name) {
+        showMsg("reg-name-msg", data.errors.name[0], "error");
+        document.getElementById("reg-name").classList.add("is-error");
+      }
+      if (data.errors?.email) {
+        showMsg("reg-email-msg", data.errors.email[0], "error");
+        document.getElementById("reg-email").classList.add("is-error");
+      }
+      if (data.errors?.password) {
+        showMsg("reg-pw-msg", data.errors.password[0], "error");
+        document.getElementById("reg-password").classList.add("is-error");
+      }
+      showToast(data.message || "Gagal membuat akun.", "error");
+    }
+  } catch (err) {
+    setLoading("register-submit", false);
+    showToast("Terjadi kesalahan koneksi server. Coba lagi.", "error");
+  }
 }
 
 function handleForgot(e) {

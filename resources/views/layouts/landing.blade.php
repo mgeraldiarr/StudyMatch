@@ -20,8 +20,8 @@
         </div>
 
         <div class="nav-right">
-            <a href="{{ route('auth.login') }}" class="btn-nav btn-nav-outline">Masuk</a>
-            <a href="{{ route('auth.login') }}" class="btn-nav btn-nav-fill">Daftar Gratis</a>
+            <a href="{{ route('login') }}" class="btn-nav btn-nav-outline">Masuk</a>
+            <a href="{{ route('login') }}" class="btn-nav btn-nav-fill">Daftar Gratis</a>
             <div class="nav-hamburger" id="hamburger" onclick="toggleMenu()">
                 <span></span><span></span><span></span>
             </div>
@@ -35,8 +35,8 @@
         <a href="#faq" onclick="closeMenu()">FAQ</a>
         <div class="mobile-menu-divider"></div>
         <div class="mobile-menu-actions">
-            <a href="{{ route('auth.login') }}" class="btn-nav btn-nav-outline">Masuk</a>
-            <a href="{{ route('auth.login') }}" class="btn-nav btn-nav-fill">Daftar Gratis</a>
+            <a href="{{ route('login') }}" class="btn-nav btn-nav-outline">Masuk</a>
+            <a href="{{ route('login') }}" class="btn-nav btn-nav-fill">Daftar Gratis</a>
         </div>
     </div>
 

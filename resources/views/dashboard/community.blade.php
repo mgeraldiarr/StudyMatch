@@ -7,6 +7,11 @@
 @endpush
 
 @section('content')
+<script>
+    window.__INITIAL_CHANNELS__ = @json($channels ?? []);
+    window.__INITIAL_THREADS__ = @json($threads ?? []);
+</script>
+
 <div class="main-inner">
   <div class="page-hero">
     <h2 class="hero-title">Komunitas <span>Intelektual</span></h2>
@@ -66,7 +71,7 @@
       </div>
       <div class="sess-form-actions">
         <button type="button" class="btn btn-ghost" onclick="closeCreateThread()">Batal</button>
-        <button type="submit" class="btn btn-primary">Publikasikan</button>
+        <button type="submit" class="btn btn-primary" id="btnSubmitThread">Publikasikan</button>
       </div>
     </form>
   </div>
@@ -84,4 +89,3 @@
   <div class="modal-panel-body" id="detailBody"></div>
 </div>
 @endsection
-

@@ -11,6 +11,11 @@
 @endpush
 
 @section('content')
+<script>
+    window.__INITIAL_SESSIONS__ = @json($sessions ?? []);
+    window.__INITIAL_RECAPS__ = @json($recaps ?? []);
+</script>
+
 <div class="main-inner">
     <!-- Page Header -->
     <div class="page-header">
@@ -70,13 +75,13 @@
             <div class="upcoming-card">
                 <div class="upcoming-header">
                     <h3>Sesi Terdekat</h3>
-                    <span class="upcoming-badge" id="upcomingBadge">3 Hari Ini</span>
+                    <span class="upcoming-badge" id="upcomingBadge">Sesi Aktif</span>
                 </div>
                 <div class="sessions-list" id="sessionsList"></div>
             </div>
         </div>
     </div>
-
+    
     <!-- Tabs Section -->
     <div class="tabs-section">
         <div class="tabs">
@@ -144,7 +149,7 @@
             </div>
           <div class="sess-form-actions">
             <button type="button" class="btn btn-ghost" onclick="closeCreateSession()">Batal</button>
-            <button type="submit" class="btn btn-primary">Buat Sesi</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmitSession">Buat Sesi</button>
           </div>
         </form>
     </div>

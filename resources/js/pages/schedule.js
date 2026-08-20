@@ -1,137 +1,36 @@
-/* ─── Data ─── */
+/* ─── StudyMatch Schedule Logic (Dynamic, Connected & Responsive) ─── */
+
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+function escapeHtml(str) {
+  if (typeof str !== "string") return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
+const curDate = new Date();
 const state = {
-  year: 2024,
-  month: 4,
+  year: curDate.getFullYear(),
+  month: curDate.getMonth(),
+  weekOffset: 0,
   view: "monthly",
   selected: null,
-  sessions: [
-    {
-      id: 1,
-      name: "Kalkulus Lanjut III",
-      date: "2024-05-06",
-      time: "10:00",
-      duration: 90,
-      participants: ["Sarah", "Liam"],
-      avatars: [
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuAh5E0pLcmDhjvQpbxyhoC_CdvbrXvjIfYRLOhzJLN7lM18K-g7pjd5C0RetKxIfMZoBbBDZcegxtH8JnCZQCMz2jaWJvNpOEHvmu1Pq1g_-mFIe8poONAKBfZPDtYNlhXyz5Lgav9H2O9mm0Rvh8FVA8Gz2QWTfbkxq9oP7H5SI1pCses_Da1JBbNiRlrT527sUbN68CMNh80e3b7Q9OWwW5toxjbYTCG7QCOPD8n-CQOTYX9xHh_6Vu9rwjrdH7xuxCY6J36YVXM",
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuBAyJXWMbkBK0IZDBrs2rOd6HFFLPcJ6S66Cb1EDStsAErxWOypRyEimO2bDpVWagBl0-i_8cWd9W4Y9s9aM2ywUnGmB7eX3n59hi42z2w0YNceOIBAKf6iLcgsIB9gJomUCYiAeA6BEOckDHBQhBs1K2QS-YWDEF2ZuMDT-wkMAS1ADISjMzRuV6LSJpeMScsyJEomDMqiPZHUSP1HGzVZgWmDMAJz0UOplce0xuRmCPYgJik2Dh7a8n0lDo39wt_R5Q3bzXsYYqg",
-      ],
-      meet: true,
-      meetLink: "https://meet.google.com/abc-123",
-    },
-    {
-      id: 2,
-      name: "Sejarah Seni Modern",
-      date: "2024-05-07",
-      time: "14:00",
-      duration: 60,
-      participants: ["Dr. Elena"],
-      avatars: [
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuCtqWGVfOlyxx6i-aS6HsNy1Yilmi-6IgPJTQ7_OmwXe-Jmj8bl2RSRCv2jSlCE3o9ByLR6eTspEROtQ_AxKVjazAAn9_OEtteTyJT0mMgfexEl2Cn5QM5Bq3vaGYcjhcCz1i8Ayc6S0Fvm_83r0LDjcgtnY5rMLOTlFgKv9jePoxgWKEbGsIMlYel_V6FZNcqqysqITefhvUEWroq9_MGhsMRhmjMS0-qKcnVsZs10Wv9H8JGbHBEI7JsNkmmwL21jMoUyJVqrM3M",
-      ],
-      meet: false,
-      location: "Perpus Pusat R.204",
-    },
-    {
-      id: 3,
-      name: "Fisika Dasar I",
-      date: "2024-05-10",
-      time: "09:00",
-      duration: 120,
-      participants: ["Rina", "Budi"],
-      avatars: [],
-      meet: true,
-      meetLink: "https://meet.google.com/def-456",
-    },
-  ],
-  recaps: [
-    {
-      id: 1,
-      tag: "Fisika Dasar 1",
-      tagColor: "secondary",
-      date: "May 04, 2024",
-      title: "Dasar Mekanika Kuantum",
-      desc: "Membahas eksperimen celah ganda dan dualisme gelombang-partikel. Semua merasa paham kecuali pada derivasi akhir...",
-      file: "Catatan_Rekap.pdf",
-    },
-    {
-      id: 2,
-      tag: "Arsitektur",
-      tagColor: "tertiary",
-      date: "May 02, 2024",
-      title: "Pengaruh Gerakan Bauhaus",
-      desc: "Mengulas prinsip arsitektur Walter Gropius dan pendekatan fungsionalis dalam desain modern...",
-      file: "Transkrip_Seminar.docx",
-    },
-    {
-      id: 3,
-      tag: "Kalkulus",
-      tagColor: "secondary",
-      date: "Apr 28, 2024",
-      title: "Integral Lipat & Aplikasi",
-      desc: "Menyelesaikan soal-soal integral lipat dua dan tiga dengan berbagai batas integrasi...",
-      file: "Latihan_Integral.pdf",
-    },
-    {
-      id: 4,
-      tag: "Kimia Organik",
-      tagColor: "tertiary",
-      date: "Apr 25, 2024",
-      title: "Reaksi Substitusi Nukleofilik",
-      desc: "Pembahasan mekanisme SN1 dan SN2 beserta faktor-faktor yang mempengaruhi laju reaksi...",
-      file: "Rangkuman_Reaksi.pdf",
-    },
-    {
-      id: 5,
-      tag: "Pemrograman",
-      tagColor: "secondary",
-      date: "Apr 22, 2024",
-      title: "Struktur Data Dasar",
-      desc: "Diskusi tentang array, linked list, stack, dan queue dengan implementasi Python...",
-      file: "Kode_Contoh.py",
-    },
-    {
-      id: 6,
-      tag: "Biologi",
-      tagColor: "tertiary",
-      date: "Apr 20, 2024",
-      title: "Mekanisme Transpor Membran",
-      desc: "Mempelajari difusi, osmosis, transpor aktif, dan endositosis pada membran sel...",
-      file: "Diagram_Transpor.png",
-    },
-  ],
-  resources: [
-    { id: 1, title: "Catatan Kalkulus — Integral Lipat", type: "PDF", size: "2.4 MB", uploader: "Budi Santoso", date: "3 hari lalu" },
-    { id: 2, title: "Video Pembelajaran — Mekanika Kuantum", type: "Video", size: "45 MB", uploader: "Dr. Elena", date: "5 hari lalu" },
-    { id: 3, title: "Template LaTeX — Makalah Ilmiah", type: "ZIP", size: "1.1 MB", uploader: "Sarah Connor", date: "1 minggu lalu" },
-    { id: 4, title: "Flashcard — Anatomi Jantung", type: "Anki", size: "856 KB", uploader: "Rina Wijaya", date: "1 minggu lalu" },
-    { id: 5, title: "Soal-Soal — Struktur Data", type: "PDF", size: "3.7 MB", uploader: "Liam Neeson", date: "2 minggu lalu" },
-  ],
-  performance: {
-    totalSessions: 12,
-    completedSessions: 9,
-    totalHours: 18,
-    avgRating: 4.6,
-    topSubject: "Kalkulus",
-    partnerCount: 5,
-    weeklyHours: [4, 6, 3, 5, 7, 4, 2],
-    weeklyLabels: ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"],
-    subjectBreakdown: [
-      { name: "Kalkulus", hours: 8, color: "var(--primary)" },
-      { name: "Fisika", hours: 5, color: "var(--secondary)" },
-      { name: "Kimia", hours: 3, color: "var(--accent)" },
-      { name: "Lainnya", hours: 2, color: "var(--tertiary)" },
-    ],
-  },
+  sessions: window.__INITIAL_SESSIONS__ || [],
+  recaps: window.__INITIAL_RECAPS__ || [],
+  resources: [], // Starts clean for fresh accounts
 };
-
-let sessionIdCounter = 4;
 
 /* ─── Helpers ─── */
 function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
@@ -142,32 +41,57 @@ function daySessions(y, m, d) { const ds = dateStr(y, m, d); return state.sessio
 function todayStr() { const t = new Date(); return dateStr(t.getFullYear(), t.getMonth(), t.getDate()); }
 function isToday(y, m, d) { return dateStr(y, m, d) === todayStr(); }
 
-/* ─── Toast Notifikasi Sederhana ─── */
+/**
+ * Generate a valid Google Meet link with 3-4-3 format (e.g. abc-defg-hij)
+ */
+function generateMeetLink() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  const part = (len) => Array.from({length: len}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `https://meet.google.com/${part(3)}-${part(4)}-${part(3)}`;
+}
+
+/* ─── Toast ─── */
 function toast(message, type = 'info') {
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed; bottom: 2rem; right: 2rem; background: var(--surface-card);
-    color: var(--text-primary); padding: 0.75rem 1.5rem; border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg); z-index: 300; font-weight: 500;
-    border-left: 4px solid var(--primary); animation: slideIn 0.3s ease;
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = message;
+  t.style.cssText = `
+    position: fixed; bottom: 2rem; right: 2rem; background: var(--surface-card, #1e1b4b);
+    color: var(--text-primary, #fff); padding: 0.75rem 1.5rem; border-radius: var(--radius-md, 8px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 300; font-weight: 500;
+    border-left: 4px solid var(--primary, #6366f1); animation: slideIn 0.3s ease;
   `;
-  document.body.appendChild(toast);
+  document.body.appendChild(t);
   setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s';
-    setTimeout(() => toast.remove(), 300);
+    t.style.opacity = '0';
+    t.style.transition = 'opacity 0.3s';
+    setTimeout(() => t.remove(), 300);
   }, 2500);
 }
 
-/* ─── Render Calendar ─── */
-function renderCalendar() {
-  const { year, month } = state;
+/* ─── Render View (Monthly vs Weekly) ─── */
+function renderView() {
   const grid = document.getElementById("calGrid");
+  if (!grid) return;
+
+  if (state.view === "weekly") {
+    renderWeekly(grid);
+  } else {
+    renderMonthly(grid);
+  }
+
+  updateUpcoming();
+}
+
+/* ─── Render Monthly Calendar ─── */
+function renderMonthly(grid) {
   grid.classList.remove("weekly");
+  const { year, month } = state;
+
   const title = document.getElementById("calTitle");
-  title.innerHTML = `<span class="material-symbols-outlined">calendar_today</span> ${MONTHS[month]} ${year}`;
+  if (title) {
+    title.innerHTML = `<span class="material-symbols-outlined">calendar_today</span> ${MONTHS[month]} ${year}`;
+  }
 
   const days = daysInMonth(year, month);
   const startDay = firstDayOfMonth(year, month);
@@ -186,8 +110,8 @@ function renderCalendar() {
     const sess = daySessions(year, month, d);
     const ds = dateStr(year, month, d);
     const isSelected = state.selected === ds;
-    const dots = sess.map(s => s.meet ? 'primary' : (s.location ? 'secondary' : 'tertiary')).slice(0, 3);
-    html += `<div class="cal-cell${today ? " today" : ""}${isSelected ? " selected" : ""}" data-date="${ds}" tabindex="0">
+    const dots = sess.map(s => s.meet ? 'primary' : 'secondary').slice(0, 3);
+    html += `<div class="cal-cell${today ? " today" : ""}${isSelected ? " selected" : ""}" data-date="${ds}" tabindex="0" onclick="selectDate('${ds}')">
       <span>${d}</span>
       ${dots.map(c => `<div class="cal-dot ${c}"></div>`).join("")}
     </div>`;
@@ -202,115 +126,189 @@ function renderCalendar() {
   }
 
   grid.innerHTML = html;
-
-  grid.querySelectorAll(".cal-cell:not(.dimmed)").forEach(cell => {
-    cell.addEventListener("click", () => {
-      grid.querySelectorAll(".cal-cell.selected").forEach(c => c.classList.remove("selected"));
-      cell.classList.add("selected");
-      state.selected = cell.dataset.date;
-      openAgenda(state.selected);
-    });
-  });
 }
 
-/* ─── Render Week View ─── */
-function renderWeek() {
-  const title = document.getElementById("calTitle");
-  document.getElementById("calGrid").classList.add("weekly");
+/* ─── Render Weekly Calendar ─── */
+function renderWeekly(grid) {
+  grid.classList.add("weekly");
 
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + mondayOffset);
-  const endOfWeek = new Date(monday);
-  endOfWeek.setDate(monday.getDate() + 6);
-  const monthStart = MONTHS[monday.getMonth()];
-  const monthEnd = MONTHS[endOfWeek.getMonth()];
+  // Calculate start of week (Monday) based on curDate + weekOffset
+  const now = new Date();
+  const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + state.weekOffset * 7);
+  const dayOfWeek = baseDate.getDay(); // 0 is Sunday, 1 is Monday, ...
+  const distanceToMonday = (dayOfWeek + 6) % 7; // Monday = 0, Sunday = 6
 
-  title.innerHTML = `<span class="material-symbols-outlined">view_week</span> ${monthStart} ${monday.getDate()} — ${monthEnd} ${endOfWeek.getDate()}, ${endOfWeek.getFullYear()}`;
+  const monday = new Date(baseDate);
+  monday.setDate(baseDate.getDate() - distanceToMonday);
 
-  const grid = document.getElementById("calGrid");
-  let html = "";
-
+  const weekDates = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    const y = d.getFullYear();
-    const m = d.getMonth();
-    const day = d.getDate();
-    const ds = dateStr(y, m, day);
-    const isTodayFlag = isToday(y, m, day);
-    const sess = state.sessions.filter(s => s.date === ds);
-    const dayName = DAYS[i];
-    const dateObj = new Date(y, m, day);
-    const dateStrLocal = dateObj.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-
-    html += `<div class="week-day${isTodayFlag ? " today" : ""}">
-      <div class="week-day-header" onclick="openAgenda('${ds}')">
-        <div class="week-day-name">${dayName}</div>
-        <div class="week-day-date">${dateStrLocal}</div>
-        <div class="week-day-sess-count">${sess.length} sesi</div>
-      </div>
-      <div class="week-day-body">
-        ${sess.length === 0 ? '<div class="week-empty">Tidak ada sesi</div>' : ""}
-        ${sess.map(s => `
-          <div class="week-session" onclick="openAgenda('${ds}')">
-            <div class="week-sess-top">
-              <span class="week-sess-time">${s.time}</span>
-              <span class="week-sess-name">${s.name}</span>
-              ${s.meet ? '<span class="week-sess-badge">Meet</span>' : ""}
-            </div>
-            <div class="week-sess-meta">
-              <span class="material-symbols-outlined">schedule</span> ${s.duration}m
-              <span class="week-sess-with">${s.participants.join(", ")}</span>
-            </div>
-            ${s.location ? `<div class="week-sess-loc"><span class="material-symbols-outlined">location_on</span> ${s.location}</div>` : ""}
-          </div>
-        `).join("")}
-      </div>
-    </div>`;
+    weekDates.push(d);
   }
+
+  const startDate = weekDates[0];
+  const endDate = weekDates[6];
+
+  const title = document.getElementById("calTitle");
+  if (title) {
+    title.innerHTML = `<span class="material-symbols-outlined">view_week</span> Pekan: ${startDate.getDate()} ${MONTHS[startDate.getMonth()]} – ${endDate.getDate()} ${MONTHS[endDate.getMonth()]} ${endDate.getFullYear()}`;
+  }
+
+  const dayNames = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+  let html = "";
+
+  weekDates.forEach((dateObj, idx) => {
+    const y = dateObj.getFullYear();
+    const m = dateObj.getMonth();
+    const d = dateObj.getDate();
+    const ds = dateStr(y, m, d);
+    const today = isToday(y, m, d);
+    const daySess = state.sessions.filter(s => s.date === ds);
+
+    let sessHtml = "";
+    if (daySess.length === 0) {
+      sessHtml = `<div class="week-empty">Tidak ada sesi</div>`;
+    } else {
+      sessHtml = daySess.map(s => `
+        <div class="week-session" onclick="openAgenda(${JSON.stringify(s).replace(/"/g, '&quot;')})">
+          <div class="week-sess-top">
+            <span class="week-sess-time">${escapeHtml(s.time)}</span>
+            <span class="week-sess-name">${escapeHtml(s.name)}</span>
+            ${s.meet ? '<span class="material-symbols-outlined" style="font-size:14px;color:var(--primary);">videocam</span>' : ''}
+          </div>
+          <div style="font-size:0.7rem;color:var(--text-muted);">${s.duration} mnt · ${escapeHtml(Array.isArray(s.participants) ? s.participants.join(', ') : s.participants)}</div>
+        </div>
+      `).join("");
+    }
+
+    html += `
+      <div class="week-day${today ? ' today' : ''}">
+        <div class="week-day-header" onclick="selectDate('${ds}')">
+          <span class="week-day-name">${dayNames[idx]}</span>
+          <span class="week-day-date">${d} ${MONTHS[m].substring(0, 3)}</span>
+          <span class="week-day-sess-count">${daySess.length} sesi</span>
+        </div>
+        <div class="week-day-body">${sessHtml}</div>
+      </div>
+    `;
+  });
 
   grid.innerHTML = html;
 }
 
-/* ─── Agenda Modal ─── */
-function openAgenda(dateStr) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const sessions = daySessions(y, m - 1, d);
-  const recaps = state.recaps;
+async function selectDate(ds) {
+  state.selected = ds;
+  const sess = state.sessions.filter(s => s.date === ds);
+  if (sess.length > 0) {
+    openAgenda(sess[0]);
+  } else {
+    const shouldCreate = await (window.showConfirmModal ? window.showConfirmModal({
+      title: "Jadwalkan Sesi Belajar",
+      message: `Tidak ada sesi belajar pada tanggal ${ds}. Ingin buat sesi belajar baru untuk tanggal ini?`,
+      confirmText: "Buat Sesi",
+      cancelText: "Nanti Saja",
+      type: "primary",
+      icon: "calendar_add_on"
+    }) : Promise.resolve(confirm(`Tidak ada sesi belajar pada tanggal ${ds}. Ingin buat sesi baru?`)));
 
+    if (shouldCreate) {
+      openCreateSession();
+      const dInput = document.getElementById("sessDate");
+      if (dInput) dInput.value = ds;
+    }
+  }
+}
+
+function prevMonth() {
+  if (state.view === "weekly") {
+    state.weekOffset--;
+  } else {
+    state.month--;
+    if (state.month < 0) { state.month = 11; state.year--; }
+  }
+  renderView();
+}
+
+function nextMonth() {
+  if (state.view === "weekly") {
+    state.weekOffset++;
+  } else {
+    state.month++;
+    if (state.month > 11) { state.month = 0; state.year++; }
+  }
+  renderView();
+}
+
+function setView(v) {
+  state.view = v;
+  document.querySelectorAll(".view-toggle-btn").forEach((b, i) => {
+    b.classList.toggle("active", (i === 0 && v === "monthly") || (i === 1 && v === "weekly"));
+  });
+  renderView();
+}
+
+/* ─── Upcoming Sessions ─── */
+function updateUpcoming() {
+  const list = document.getElementById("sessionsList");
+  if (!list) return;
+
+  const today = todayStr();
+  const upcoming = state.sessions.filter(s => s.date >= today).slice(0, 4);
+
+  if (upcoming.length === 0) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:24px 8px;color:var(--text-muted);font-size:0.875rem;">
+        <span class="material-symbols-outlined" style="font-size:32px;margin-bottom:4px;color:var(--primary);">event_available</span>
+        <p style="margin:0;">Belum ada sesi mendatang.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = upcoming.map(s => `
+    <div class="session-item" style="padding:10px 12px;border-radius:8px;background:rgba(0,0,0,0.03);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:600;font-size:0.875rem;">${escapeHtml(s.name)}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(s.date)} · ${escapeHtml(s.time)} (${s.duration} mnt)</div>
+      </div>
+      <button class="btn btn-sm btn-ghost" onclick="openAgenda(${JSON.stringify(s).replace(/"/g, '&quot;')})">
+        <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
+      </button>
+    </div>
+  `).join("");
+}
+
+/* ─── Agenda Modal ─── */
+function openAgenda(s) {
   const overlay = document.getElementById("agendaOverlay");
   const panel = document.getElementById("agendaPanel");
   const content = document.getElementById("agendaContent");
+  if (!overlay || !panel || !content) return;
 
-  const dateObj = new Date(y, m - 1, d);
-  const dayName = DAYS[dateObj.getDay()];
-  const monthName = MONTHS[m - 1];
-
-  let sessionHtml = sessions.length === 0
-    ? `<p class="agenda-empty">Tidak ada sesi pada hari ini.</p>`
-    : sessions.map(s => `
-      <div class="agenda-session">
-        <div class="agenda-sess-left">
-          <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px">radio_button_checked</span>
-          <div>
-            <div class="agenda-sess-name">${s.name}</div>
-            <div class="agenda-sess-time">${s.time} · ${s.duration}m</div>
-          </div>
-        </div>
-        <div class="agenda-sess-right">
-          ${s.meet ? '<span class="agenda-badge meet">Meet</span>' : ""}
-          ${s.location ? `<span class="agenda-sess-loc"><span class="material-symbols-outlined" style="font-size:14px">location_on</span> ${s.location}</span>` : ""}
-        </div>
-      </div>`).join("");
+  const participants = Array.isArray(s.participants) ? s.participants.join(", ") : "Partner Belajar";
+  const meetButton = s.meetLink ? `
+    <a href="${escapeHtml(s.meetLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;">
+      <span class="material-symbols-outlined" style="font-size:16px;">videocam</span> Gabung Google Meet
+    </a>
+  ` : '';
 
   content.innerHTML = `
-    <div class="agenda-date">${dayName}, ${d} ${monthName} ${y}</div>
-    <div class="agenda-section-title">Sesi Belajar</div>
-    ${sessionHtml}
-    <div class="agenda-section-title" style="margin-top:1.25rem">Rekap Tersedia</div>
-    <p class="agenda-empty">${recaps.length > 0 ? recaps.length + " rekap tersedia. Buka tab Riwayat untuk melihat." : "Belum ada rekap."}</p>
+    <div style="font-size:1.125rem;font-weight:700;margin-bottom:8px;">${escapeHtml(s.name)}</div>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:6px;">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;">calendar_month</span> ${escapeHtml(s.date)} pukul ${escapeHtml(s.time)} (${s.duration} menit)
+    </p>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:12px;">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;">people</span> Peserta: ${escapeHtml(participants)}
+    </p>
+    ${meetButton}
+    <div style="margin-top:20px;border-top:1px solid rgba(0,0,0,0.08);padding-top:12px;display:flex;justify-content:space-between;">
+      <button class="btn btn-sm btn-ghost" style="color:#ef4444;" onclick="deleteSession(${s.id})">
+        <span class="material-symbols-outlined" style="font-size:16px;">delete</span> Hapus Sesi
+      </button>
+      <button class="btn btn-sm btn-ghost" onclick="closeAgenda()">Tutup</button>
+    </div>
   `;
 
   overlay.classList.add("show");
@@ -318,290 +316,226 @@ function openAgenda(dateStr) {
 }
 
 function closeAgenda() {
-  document.getElementById("agendaOverlay").classList.remove("show");
-  document.getElementById("agendaPanel").classList.remove("show");
+  document.getElementById("agendaOverlay")?.classList.remove("show");
+  document.getElementById("agendaPanel")?.classList.remove("show");
 }
 
-/* ─── Navigation ─── */
-function prevMonth() {
-  state.month--;
-  if (state.month < 0) { state.month = 11; state.year--; }
-  renderView();
-}
-function nextMonth() {
-  state.month++;
-  if (state.month > 11) { state.month = 0; state.year++; }
-  renderView();
-}
-function renderView() {
-  if (state.view === "monthly") renderCalendar();
-  else renderWeek();
-  updateUpcoming();
-}
+/* ─── Delete Session ─── */
+async function deleteSession(id) {
+  const confirmed = await (window.showConfirmModal ? window.showConfirmModal({
+    title: "Hapus Sesi Belajar",
+    message: "Apakah kamu yakin ingin menghapus sesi belajar ini dari jadwal?",
+    confirmText: "Hapus Sesi",
+    cancelText: "Batal",
+    type: "danger",
+    icon: "delete_forever"
+  }) : Promise.resolve(confirm("Hapus sesi belajar ini?")));
 
-/* ─── View Toggle ─── */
-function setView(mode) {
-  state.view = mode;
-  document.querySelectorAll(".view-toggle-btn").forEach(b => b.classList.remove("active"));
-  if (mode === "monthly") {
-    document.querySelector(".view-toggle-btn:first-child").classList.add("active");
-  } else {
-    document.querySelector(".view-toggle-btn:last-child").classList.add("active");
-  }
-  renderView();
-}
+  if (!confirmed) return;
 
-/* ─── Upcoming Sessions (diperbaiki) ─── */
-function updateUpcoming() {
-  const list = document.getElementById("sessionsList");
-  const badge = document.getElementById("upcomingBadge");
-  const todayStr = todayStr();
-  const todaySessions = state.sessions.filter(s => s.date === todayStr);
-  badge.textContent = todaySessions.length + " Hari Ini";
-
-  // Tampilkan sesi yang akan datang (tanggal >= hari ini), urutkan, maks 3
-  const upcoming = state.sessions
-    .filter(s => s.date >= todayStr)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
-    .slice(0, 3);
-
-  list.innerHTML = upcoming.map(s => `
-    <div class="session-card ${s.meet ? 'primary' : 'secondary'}" role="button" tabindex="0">
-      <div class="session-top">
-        <span class="session-name">${s.name}</span>
-        ${s.meet ? '<span class="session-live">LIVE</span>' : ""}
-      </div>
-      <div class="session-participants">
-        <div class="avatar-stack">
-          ${s.avatars.map(a => `<img alt="" src="${a}" />`).join("")}
-        </div>
-        <span class="session-with">bersama ${s.participants.join(" & ")}</span>
-      </div>
-      <div class="session-footer">
-        <div class="session-meta">
-          <span class="material-symbols-outlined">schedule</span> ${s.duration}m
-        </div>
-        ${s.location
-          ? `<div class="session-meta"><span class="material-symbols-outlined">location_on</span> ${s.location}</div>`
-          : `<a class="session-join" href="${s.meetLink || '#'}" target="_blank" rel="noopener">Gabung Meet <span class="material-symbols-outlined">open_in_new</span></a>`}
-      </div>
-    </div>
-  `).join("");
-
-  // Tambahkan event listener untuk session-join yang tidak memiliki link
-  list.querySelectorAll('.session-join[href="#"]').forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      toast("Fitur Meet akan segera hadir.", "info");
+  try {
+    const res = await fetch(`/schedule/sessions/${id}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
     });
-  });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      state.sessions = state.sessions.filter(s => s.id !== id);
+      closeAgenda();
+      renderView();
+      switchTab(document.querySelector(".tab-btn.active") ? Array.from(document.querySelectorAll(".tab-btn")).indexOf(document.querySelector(".tab-btn.active")) : 0);
+      toast(data.message || "Sesi belajar dihapus.", "success");
+    } else {
+      toast(data.message || "Gagal menghapus sesi.", "error");
+    }
+  } catch (err) {
+    toast("Terjadi kesalahan jaringan.", "error");
+  }
 }
 
 /* ─── Create Session Modal ─── */
 function openCreateSession() {
-  document.getElementById("sessionOverlay").classList.add("show");
-  document.getElementById("sessionPanel").classList.add("show");
+  document.getElementById("sessionOverlay")?.classList.add("show");
+  document.getElementById("sessionPanel")?.classList.add("show");
   if (state.selected) {
-    document.getElementById("sessDate").value = state.selected;
+    const dInput = document.getElementById("sessDate");
+    if (dInput) dInput.value = state.selected;
   }
 }
+
 function closeCreateSession() {
-  document.getElementById("sessionOverlay").classList.remove("show");
-  document.getElementById("sessionPanel").classList.remove("show");
+  document.getElementById("sessionOverlay")?.classList.remove("show");
+  document.getElementById("sessionPanel")?.classList.remove("show");
 }
-function createSession(e) {
+
+async function createSession(e) {
   e.preventDefault();
-  const name = document.getElementById("sessName").value.trim();
-  const date = document.getElementById("sessDate").value;
-  const time = document.getElementById("sessTime").value;
-  const duration = parseInt(document.getElementById("sessDuration").value);
-  const participants = document.getElementById("sessParticipants").value.trim();
-  const hasMeet = document.getElementById("sessMeet").checked;
+  const name = document.getElementById("sessName")?.value.trim();
+  const date = document.getElementById("sessDate")?.value;
+  const time = document.getElementById("sessTime")?.value;
+  const duration = parseInt(document.getElementById("sessDuration")?.value || 60);
+  const participants = document.getElementById("sessParticipants")?.value.trim();
+  const hasMeet = document.getElementById("sessMeet")?.checked;
+  const btn = document.getElementById("btnSubmitSession");
 
   if (!name || !date || !time) {
     toast("Lengkapi nama, tanggal, dan waktu sesi!", "error");
     return;
   }
 
-  state.sessions.push({
-    id: sessionIdCounter++,
-    name,
-    date,
-    time,
-    duration: duration || 60,
-    participants: participants ? participants.split(",").map(p => p.trim()) : [],
-    avatars: [],
-    meet: hasMeet,
-    meetLink: hasMeet ? `https://meet.google.com/${Math.random().toString(36).substring(2,8)}` : null,
-  });
+  if (btn) btn.disabled = true;
 
-  closeCreateSession();
-  document.getElementById("sessionForm").reset();
-  renderView();
-  toast("Sesi berhasil dibuat! ✓", "success");
+  // Generate valid Google Meet link
+  const meetingLink = hasMeet ? generateMeetLink() : null;
+  const participantsList = participants ? participants.split(",").map(p => p.trim()) : ["Partner Belajar"];
+
+  try {
+    const res = await fetch("/schedule/sessions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({
+        title: name,
+        date,
+        time,
+        duration,
+        meeting_link: meetingLink,
+        participants: participantsList,
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      state.sessions.push(data.session);
+      closeCreateSession();
+      document.getElementById("sessionForm")?.reset();
+      renderView();
+      switchTab(document.querySelector(".tab-btn.active") ? Array.from(document.querySelectorAll(".tab-btn")).indexOf(document.querySelector(".tab-btn.active")) : 0);
+      toast("Sesi berhasil dijadwalkan! 📅", "success");
+    } else {
+      toast(data.message || "Gagal membuat sesi.", "error");
+    }
+  } catch (err) {
+    toast("Terjadi kesalahan jaringan.", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ─── Tabs ─── */
 function switchTab(idx) {
   document.querySelectorAll(".tab-btn").forEach((b, i) => b.classList.toggle("active", i === idx));
   const container = document.getElementById("tabContent");
+  if (!container) return;
   if (idx === 0) renderRecapTab(container);
   else if (idx === 1) renderResourcesTab(container);
   else renderPerformanceTab(container);
 }
 
 function renderRecapTab(container) {
+  if (state.recaps.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding: 48px 16px; background: var(--surface-card, #fff); border-radius: var(--radius-lg, 12px); border: 1px dashed var(--border-light, #e2e8f0); margin-top: 12px;">
+        <span class="material-symbols-outlined" style="font-size: 48px; color: var(--primary, #6366f1); margin-bottom: 8px;">history_edu</span>
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 6px;">Belum Ada Riwayat Rekap</h4>
+        <p style="font-size: 0.875rem; color: var(--text-muted, #64748b); max-width: 400px; margin: 0 auto 16px;">Sesi belajar yang telah selesai akan otomatis dirangkum dan ditampilkan di sini sebagai catatan evaluasimu.</p>
+        <button class="btn btn-primary btn-sm" onclick="openCreateSession()">Buat Sesi Belajar Pertama</button>
+      </div>
+    `;
+    return;
+  }
+
   container.innerHTML = `<div class="recap-grid" id="recapGrid">
     ${state.recaps.map(r => `
-      <div class="recap-card" role="button" tabindex="0">
-        <div class="recap-meta">
-          <span class="recap-tag ${r.tagColor}">${r.tag}</span>
-          <span class="recap-date">${r.date}</span>
+      <div class="recap-card" role="button" tabindex="0" style="padding:16px;border-radius:8px;background:var(--surface-card, #fff);box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:12px;">
+        <div class="recap-meta" style="margin-bottom:6px;">
+          <span class="recap-tag ${r.tagColor}" style="padding:2px 8px;border-radius:4px;font-size:0.75rem;background:rgba(99,102,241,0.1);color:var(--primary,#6366f1);">${escapeHtml(r.tag)}</span>
+          <span class="recap-date" style="font-size:0.75rem;color:var(--text-muted);margin-left:6px;">${escapeHtml(r.date)}</span>
         </div>
-        <h6 class="recap-title">${r.title}</h6>
-        <p class="recap-desc">${r.desc}</p>
-        <div class="recap-footer">
-          <div class="recap-file">
-            <span class="material-symbols-outlined">description</span>
-            <span class="recap-file-name">${r.file}</span>
-          </div>
-          <button class="recap-dl" data-file="${r.file}">
-            <span class="material-symbols-outlined">download</span>
-          </button>
-        </div>
+        <h6 class="recap-title" style="font-weight:600;font-size:0.9375rem;margin:4px 0;">${escapeHtml(r.title)}</h6>
+        <p class="recap-desc" style="font-size:0.875rem;color:var(--text-muted);margin-bottom:8px;">${escapeHtml(r.desc)}</p>
       </div>
     `).join("")}
   </div>`;
-
-  container.querySelectorAll(".recap-card").forEach(card => {
-    card.addEventListener("click", (e) => {
-      if (e.target.closest(".recap-dl")) {
-        const file = e.target.closest(".recap-dl").dataset.file;
-        toast(`Mengunduh: ${file}`, "success");
-        return;
-      }
-      toast(`Membuka ringkasan...`, "info");
-    });
-  });
 }
 
 function renderResourcesTab(container) {
-  const icons = { PDF: "picture_as_pdf", Video: "play_circle", ZIP: "folder_zip", Anki: "memory" };
-  container.innerHTML = `<div class="resources-grid">
+  if (state.resources.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding: 48px 16px; background: var(--surface-card, #fff); border-radius: var(--radius-lg, 12px); border: 1px dashed var(--border-light, #e2e8f0); margin-top: 12px;">
+        <span class="material-symbols-outlined" style="font-size: 48px; color: var(--secondary, #06b6d4); margin-bottom: 8px;">folder_shared</span>
+        <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 6px;">Belum Ada Sumber Daya Bersama</h4>
+        <p style="font-size: 0.875rem; color: var(--text-muted, #64748b); max-width: 400px; margin: 0 auto 16px;">Catatan, file PDF, slide materi, dan link belajar yang dibagikan dengan partner akan tersimpan rapi di sini.</p>
+        <button class="btn btn-secondary btn-sm" onclick="toast('Fitur unggah berkas kelompok segera aktif!', 'info')">Unggah Materi</button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `<div class="resources-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
     ${state.resources.map(r => `
-      <div class="resource-card">
-        <div class="resource-card-icon ${r.type.toLowerCase()}">
-          <span class="material-symbols-outlined">${icons[r.type] || "description"}</span>
-        </div>
-        <div class="resource-card-body">
-          <div class="resource-card-title">${r.title}</div>
-          <div class="resource-card-meta">
-            <span class="resource-card-type">${r.type}</span>
-            <span class="resource-card-sep">·</span>
-            <span>${r.size}</span>
-            <span class="resource-card-sep">·</span>
-            <span>${r.uploader}</span>
-          </div>
-          <div class="resource-card-date">${r.date}</div>
-        </div>
-        <button class="resource-card-dl" onclick="toast('Mengunduh ${r.title}...','success')">
-          <span class="material-symbols-outlined">download</span>
-        </button>
+      <div class="resource-card" style="padding:14px;border-radius:8px;background:var(--surface-card, #fff);box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div class="resource-card-title" style="font-weight:600;font-size:0.875rem;margin-bottom:4px;">${escapeHtml(r.title)}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">${escapeHtml(r.type)} · ${escapeHtml(r.size)} · ${escapeHtml(r.uploader)}</div>
       </div>
     `).join("")}
   </div>`;
 }
 
 function renderPerformanceTab(container) {
-  const p = state.performance;
-  const maxW = Math.max(...p.weeklyHours);
-  const totalSubjectHours = p.subjectBreakdown.reduce((a, b) => a + b.hours, 0);
+  const totalSessions = state.sessions.length;
+  const today = todayStr();
+  const completedSessions = state.sessions.filter(s => s.date < today).length;
+  const totalMinutes = state.sessions.reduce((acc, s) => acc + (s.duration || 60), 0);
+  const totalHours = (totalMinutes / 60).toFixed(1);
 
   container.innerHTML = `
-    <div class="perf-grid">
-      <div class="perf-stat-card">
-        <span class="material-symbols-outlined perf-stat-icon">check_circle</span>
-        <div class="perf-stat-val">${p.completedSessions}/${p.totalSessions}</div>
-        <div class="perf-stat-label">Sesi Selesai</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px;">
+      <div style="padding:16px;border-radius:8px;background:var(--surface-card, #fff);text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:1.5rem;font-weight:700;color:var(--primary,#6366f1);">${completedSessions}/${totalSessions}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">Sesi Selesai</div>
       </div>
-      <div class="perf-stat-card">
-        <span class="material-symbols-outlined perf-stat-icon">schedule</span>
-        <div class="perf-stat-val">${p.totalHours} jam</div>
-        <div class="perf-stat-label">Total Belajar</div>
+      <div style="padding:16px;border-radius:8px;background:var(--surface-card, #fff);text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:1.5rem;font-weight:700;color:#10b981;">${totalHours} jam</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">Total Belajar</div>
       </div>
-      <div class="perf-stat-card">
-        <span class="material-symbols-outlined perf-stat-icon">star</span>
-        <div class="perf-stat-val">${p.avgRating}</div>
-        <div class="perf-stat-label">Rating Rata-rata</div>
-      </div>
-      <div class="perf-stat-card">
-        <span class="material-symbols-outlined perf-stat-icon">groups</span>
-        <div class="perf-stat-val">${p.partnerCount}</div>
-        <div class="perf-stat-label">Partner Aktif</div>
+      <div style="padding:16px;border-radius:8px;background:var(--surface-card, #fff);text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="font-size:1.5rem;font-weight:700;color:#f59e0b;">${totalSessions > 0 ? '★ 5.0' : '★ Baru'}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">Rating Rata-rata</div>
       </div>
     </div>
-
-    <div class="perf-chart-section">
-      <h4 class="perf-chart-title">Jam Belajar per Hari (Pekan Ini)</h4>
-      <div class="perf-bars">
-        ${p.weeklyLabels.map((label, i) => `
-          <div class="perf-bar-col">
-            <div class="perf-bar-label-top">${p.weeklyHours[i]}j</div>
-            <div class="perf-bar-track">
-              <div class="perf-bar-fill" style="height:${(p.weeklyHours[i] / maxW) * 100}%"></div>
-            </div>
-            <div class="perf-bar-label">${label}</div>
-          </div>
-        `).join("")}
+    ${totalSessions === 0 ? `
+      <div style="text-align:center;padding:24px 16px;color:var(--text-muted);font-size:0.875rem;">
+        Statistik performa dan jam belajar kelompokmu akan terakumulasi otomatis seiring berjalannya sesi belajar.
       </div>
-    </div>
-
-    <div class="perf-subject-section">
-      <h4 class="perf-chart-title">Breakdown per Mata Kuliah</h4>
-      <div class="perf-subject-list">
-        ${p.subjectBreakdown.map(s => `
-          <div class="perf-subject-row">
-            <span class="perf-subject-name">${s.name}</span>
-            <div class="perf-subject-track">
-              <div class="perf-subject-fill" style="width:${(s.hours / totalSubjectHours) * 100}%;background:${s.color}"></div>
-            </div>
-            <span class="perf-subject-hours">${s.hours} jam</span>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-
-    <div class="perf-top-subject">
-      <span class="material-symbols-outlined" style="color:var(--accent)">military_tech</span>
-      Mata Kuliah Teraktif: <strong>${p.topSubject}</strong>
-    </div>
+    ` : ''}
   `;
 }
 
-/* ─── Integration Buttons ─── */
-document.querySelectorAll(".integration-icon-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const service = btn.dataset.service || "Layanan";
-    toast(`Menghubungkan ke ${service}...`, "info");
-  });
-});
-
-/* ─── Expose to Global ─── */
+// Global exposure
 window.renderView = renderView;
 window.setView = setView;
 window.prevMonth = prevMonth;
 window.nextMonth = nextMonth;
+window.selectDate = selectDate;
 window.openAgenda = openAgenda;
 window.closeAgenda = closeAgenda;
 window.openCreateSession = openCreateSession;
 window.closeCreateSession = closeCreateSession;
 window.createSession = createSession;
+window.deleteSession = deleteSession;
 window.switchTab = switchTab;
 window.toast = toast;
 
-/* ─── Init ─── */
+// Init
 document.addEventListener("DOMContentLoaded", () => {
-  renderCalendar();
-  updateUpcoming();
+  renderView();
   switchTab(0);
 });

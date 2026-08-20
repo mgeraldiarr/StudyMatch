@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <title>Setup Profil | StudyMatch</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/css/pages/setupprofile.css', 'resources/js/app.js', 'resources/js/pages/setupprofile.js'])
@@ -12,9 +13,9 @@
     <div id="scroll-progress"></div>
 
     <nav>
-      <a href="{{ route('auth.login') }}" class="nav-logo">StudyMatch</a>
+      <a href="{{ route('login') }}" class="nav-logo">StudyMatch</a>
 
-      <button class="nav-save-btn" onclick="autoSave()">
+      <button type="button" class="nav-save-btn" onclick="autoSave()">
         <span class="material-symbols-outlined nav-save-icon">save</span>
         Simpan draft
       </button>
@@ -73,10 +74,13 @@
             </div>
             <div class="card-desc">Informasi dasar yang ditampilkan ke calon partner belajarmu.</div>
 
+            <!-- Avatar Input & Preview -->
+            <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/jpg,image/webp" style="display:none" onchange="previewAvatar(event)" />
+
             <div class="profile-top">
-              <div class="avatar-wrap" onclick="showToast('Fitur upload foto segera hadir!')">
+              <div class="avatar-wrap" onclick="triggerAvatarUpload()" title="Klik untuk ganti foto">
                 <div class="avatar-ring">
-                  <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuUYhvXKIjbA76n-ND0sQKgFqul-AiYnO3VwBVbEFTfS_Gu3pH15f6trG2F7_82z8iALMrchhwNHdtzE24UxgNLrV-L3gXoxRpTZa7bFHrTTIIlnRJBPcRwTUtOWmJl7YmVBmQ7_egOMkwflOHDQlPRQ5h7EADOVkJuX8rp30Qr6VgcNset_BHpuNToqWdHWxpkX2F30G3o4owsZXuzEVYPwLOAsa9PaGcY0qBL-kZS9OCd1lDwmYyAfNr0OSg9LZF4yQnhYHfScM" alt="Foto profil" />
+                  <img id="avatar-img-preview" src="{{ $user?->avatar ?: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDuUYhvXKIjbA76n-ND0sQKgFqul-AiYnO3VwBVbEFTfS_Gu3pH15f6trG2F7_82z8iALMrchhwNHdtzE24UxgNLrV-L3gXoxRpTZa7bFHrTTIIlnRJBPcRwTUtOWmJl7YmVBmQ7_egOMkwflOHDQlPRQ5h7EADOVkJuX8rp30Qr6VgcNset_BHpuNToqWdHWxpkX2F30G3o4owsZXuzEVYPwLOAsa9PaGcY0qBL-kZS9OCd1lDwmYyAfNr0OSg9LZF4yQnhYHfScM' }}" alt="Foto profil" />
                 </div>
                 <div class="avatar-overlay">
                   <span class="material-symbols-outlined avatar-overlay-icon">photo_camera</span>
@@ -87,11 +91,11 @@
               </div>
               <div class="avatar-info">
                 <h4>Foto Profil</h4>
-                <button class="chip-add chip-add-sm" onclick="showToast('Fitur upload foto segera hadir!')">
+                <button type="button" class="chip-add chip-add-sm" onclick="triggerAvatarUpload()">
                   <span class="material-symbols-outlined">upload</span>
                   Upload foto
                 </button>
-                <p class="avatar-upload-hint">JPG, PNG · Maks 2MB</p>
+                <p class="avatar-upload-hint">JPG, PNG, WEBP · Maks 2MB</p>
               </div>
             </div>
 
@@ -100,26 +104,26 @@
                 <label class="field-label">Nama tampilan</label>
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-icon">badge</span>
-                  <input class="field-input has-icon" id="f-name" type="text" placeholder="Nama lengkapmu" oninput="updateCompletion(); markFilled(this);" />
+                  <input class="field-input has-icon" id="f-name" type="text" placeholder="Nama lengkapmu" value="{{ old('name', $user?->name ?? '') }}" oninput="updateCompletion(); markFilled(this);" />
                 </div>
               </div>
               <div class="field-group">
                 <label class="field-label">Universitas / Institusi</label>
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-icon">account_balance</span>
-                  <input class="field-input has-icon" id="f-univ" type="text" placeholder="cth. Universitas Indonesia" oninput="updateCompletion(); markFilled(this);" />
+                  <input class="field-input has-icon" id="f-univ" type="text" placeholder="cth. Universitas Indonesia" value="{{ old('university', $user?->university ?? '') }}" oninput="updateCompletion(); markFilled(this);" />
                 </div>
               </div>
               <div class="field-group">
                 <label class="field-label">Jurusan / Program Studi</label>
                 <div class="input-wrap">
                   <span class="material-symbols-outlined input-icon">school</span>
-                  <input class="field-input has-icon" id="f-major" type="text" placeholder="cth. Teknik Informatika" oninput="updateCompletion(); markFilled(this);" />
+                  <input class="field-input has-icon" id="f-major" type="text" placeholder="cth. Teknik Informatika" value="{{ old('major', $user?->major ?? '') }}" oninput="updateCompletion(); markFilled(this);" />
                 </div>
               </div>
               <div class="field-group">
                 <label class="field-label">Bio singkat</label>
-                <textarea class="field-input field-input-bio" id="f-bio" rows="3" placeholder="Ceritakan sedikit tentang tujuan belajarmu…" oninput="updateCompletion(); this.classList.toggle('is-filled', this.value.length > 0);"></textarea>
+                <textarea class="field-input field-input-bio" id="f-bio" rows="3" placeholder="Ceritakan sedikit tentang tujuan belajarmu…" oninput="updateCompletion(); this.classList.toggle('is-filled', this.value.length > 0);">{{ old('bio', $user?->bio ?? '') }}</textarea>
                 <div class="char-hint" id="bio-chars">0 / 160</div>
               </div>
             </div>
@@ -133,7 +137,7 @@
             <div class="card-desc">Bagaimana kamu paling baik menyerap informasi baru?</div>
             <div class="radio-list">
               <label class="radio-option">
-                <input type="radio" name="learning_style" value="visual" onchange="updateCompletion()" />
+                <input type="radio" name="learning_style" value="visual" {{ old('learning_style', $user?->learning_style ?? 'visual') === 'visual' ? 'checked' : '' }} onchange="updateCompletion()" />
                 <div class="radio-card">
                   <div class="radio-icon"><span class="material-symbols-outlined">visibility</span></div>
                   <div class="radio-text"><p>Visual</p><p>Diagram, grafik, peta konsep, dan visualisasi data.</p></div>
@@ -141,7 +145,7 @@
                 </div>
               </label>
               <label class="radio-option">
-                <input type="radio" name="learning_style" value="auditory" onchange="updateCompletion()" />
+                <input type="radio" name="learning_style" value="auditory" {{ old('learning_style', $user?->learning_style) === 'auditory' ? 'checked' : '' }} onchange="updateCompletion()" />
                 <div class="radio-card">
                   <div class="radio-icon"><span class="material-symbols-outlined">forum</span></div>
                   <div class="radio-text"><p>Diskusi</p><p>Debat Sokratik, tanya-jawab, dan tukar pikiran.</p></div>
@@ -149,7 +153,7 @@
                 </div>
               </label>
               <label class="radio-option">
-                <input type="radio" name="learning_style" value="kinesthetic" onchange="updateCompletion()" />
+                <input type="radio" name="learning_style" value="kinesthetic" {{ old('learning_style', $user?->learning_style) === 'kinesthetic' ? 'checked' : '' }} onchange="updateCompletion()" />
                 <div class="radio-card">
                   <div class="radio-icon"><span class="material-symbols-outlined">terminal</span></div>
                   <div class="radio-text"><p>Praktik</p><p>Active recall, latihan soal, dan problem solving.</p></div>
@@ -157,7 +161,7 @@
                 </div>
               </label>
               <label class="radio-option">
-                <input type="radio" name="learning_style" value="reading" onchange="updateCompletion()" />
+                <input type="radio" name="learning_style" value="reading" {{ old('learning_style', $user?->learning_style) === 'reading' ? 'checked' : '' }} onchange="updateCompletion()" />
                 <div class="radio-card">
                   <div class="radio-icon"><span class="material-symbols-outlined">menu_book</span></div>
                   <div class="radio-text"><p>Membaca / Menulis</p><p>Catatan, ringkasan, jurnal, dan riset mandiri.</p></div>
@@ -178,25 +182,34 @@
             <div class="card-desc">Tambahkan mata kuliah yang sedang kamu ambil untuk menemukan partner dengan kebutuhan serupa.</div>
 
             <div class="course-chips" id="course-chips">
-              <button class="chip" onclick="removeChip(this)">
-                Pengantar Epistemologi
-                <button class="chip-remove" tabindex="-1"><span class="material-symbols-outlined">close</span></button>
-              </button>
-              <button class="chip" onclick="removeChip(this)">
-                Neural Networks 101
-                <button class="chip-remove" tabindex="-1"><span class="material-symbols-outlined">close</span></button>
-              </button>
+              @if(isset($user) && $user->courses && $user->courses->count() > 0)
+                @foreach($user->courses as $course)
+                  <div class="chip">
+                    <span class="chip-text">{{ $course->name }}</span>
+                    <button type="button" class="chip-remove" onclick="removeChip(this)" title="Hapus mata kuliah"><span class="material-symbols-outlined">close</span></button>
+                  </div>
+                @endforeach
+              @else
+                <div class="chip">
+                  <span class="chip-text">Struktur Data &amp; Algoritma</span>
+                  <button type="button" class="chip-remove" onclick="removeChip(this)" title="Hapus mata kuliah"><span class="material-symbols-outlined">close</span></button>
+                </div>
+                <div class="chip">
+                  <span class="chip-text">Kalkulus III</span>
+                  <button type="button" class="chip-remove" onclick="removeChip(this)" title="Hapus mata kuliah"><span class="material-symbols-outlined">close</span></button>
+                </div>
+              @endif
             </div>
 
-            <button class="chip-add" id="add-course-btn" onclick="showCourseInput()">
+            <button type="button" class="chip-add" id="add-course-btn" onclick="showCourseInput()">
               <span class="material-symbols-outlined">add</span>
               Tambah mata kuliah
             </button>
 
             <div class="course-input-wrap" id="course-input-wrap">
               <input class="course-input" id="course-input" type="text" placeholder="Nama mata kuliah…" onkeydown="handleCourseKey(event)" />
-              <button class="course-input-confirm" onclick="addCourse()">Tambah</button>
-              <button class="course-input-cancel" onclick="hideCourseInput()"><span class="material-symbols-outlined">close</span></button>
+              <button type="button" class="course-input-confirm" onclick="addCourse()">Tambah</button>
+              <button type="button" class="course-input-cancel" onclick="hideCourseInput()"><span class="material-symbols-outlined">close</span></button>
             </div>
 
             <div class="info-banner">
@@ -234,9 +247,9 @@
             </div>
 
             <div class="avail-actions">
-              <button class="avail-action-btn" onclick="setAllAvail(true)">Pilih semua</button>
-              <button class="avail-action-btn" onclick="setAllAvail(false)">Hapus semua</button>
-              <button class="avail-action-btn" onclick="setWeekdays()">Hari kerja saja</button>
+              <button type="button" class="avail-action-btn" onclick="setAllAvail(true)">Pilih semua</button>
+              <button type="button" class="avail-action-btn" onclick="setAllAvail(false)">Hapus semua</button>
+              <button type="button" class="avail-action-btn" onclick="setWeekdays()">Hari kerja saja</button>
             </div>
           </div>
 
@@ -247,24 +260,24 @@
             </div>
             <div class="card-desc">Pilih satu atau lebih tujuan utamamu bergabung di StudyMatch.</div>
             <div class="goal-chips" id="goal-chips">
-              <button class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">emoji_events</span> Persiapan ujian</button>
-              <button class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">science</span> Riset bersama</button>
-              <button class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">code</span> Project coding</button>
-              <button class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">menu_book</span> Diskusi materi</button>
-              <button class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">groups</span> Kelompok belajar rutin</button>
-              <button class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">translate</span> Bahasa & writing</button>
-              <button class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">presentation</span> Presentasi & debat</button>
+              <button type="button" class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">emoji_events</span> Persiapan ujian</button>
+              <button type="button" class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">science</span> Riset bersama</button>
+              <button type="button" class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">code</span> Project coding</button>
+              <button type="button" class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">menu_book</span> Diskusi materi</button>
+              <button type="button" class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">groups</span> Kelompok belajar rutin</button>
+              <button type="button" class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">translate</span> Bahasa & writing</button>
+              <button type="button" class="goal-chip" onclick="toggleGoal(this)"><span class="material-symbols-outlined">presentation</span> Presentasi & debat</button>
             </div>
           </div>
         </div>
       </div>
 
       <div class="form-footer reveal">
-        <a href="{{ route('auth.login') }}" class="btn btn-ghost">
+        <a href="{{ route('login') }}" class="btn btn-ghost">
           <span class="material-symbols-outlined">arrow_back</span>
           Kembali
         </a>
-        <button class="btn btn-primary btn-lg" id="finish-btn" onclick="handleFinish()">
+        <button type="button" class="btn btn-primary btn-lg" id="finish-btn" onclick="handleFinish()">
           <div class="spinner"></div>
           <span class="btn-label">Selesaikan Setup</span>
           <span class="material-symbols-outlined btn-arrow-icon">arrow_forward</span>
@@ -289,7 +302,5 @@
       <span class="material-symbols-outlined">check_circle</span>
       <span id="toast-msg">Berhasil disimpan!</span>
     </div>
-
-
   </body>
 </html>
