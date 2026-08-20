@@ -1,58 +1,242 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# 🎓 StudyMatch
+### *Smart Matchmaking Platform for University Students*
 
-## About Laravel
+Platform cerdas yang menghubungkan mahasiswa untuk menemukan teman belajar (*study partner*), berdiskusi dalam forum komunitas, menjadwalkan sesi belajar virtual, dan berkolaborasi mencapai target akademis.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+[![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-4.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Tests](https://img.shields.io/badge/Tests-36%20Passed%20(100%25)-success?style=for-the-badge&logo=phpunit&logoColor=white)](https://phpunit.de)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+</div>
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 📌 Daftar Isi
+- [Tentang Proyek](#-tentang-proyek)
+- [Fitur Utama](#-fitur-utama)
+- [Arsitektur & Keamanan](#-arsitektur--keamanan)
+- [Teknologi yang Digunakan](#-teknologi-yang-digunakan)
+- [Struktur Folder](#-struktur-folder)
+- [Panduan Instalasi Lokal](#-panduan-instalasi-lokal)
+- [Pengujian Otomatis (Automated Testing)](#-pengujian-otomatis-automated-testing)
+- [Akun Demo](#-akun-demo)
+- [Lisensi](#-lisensi)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 📖 Tentang Proyek
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+**StudyMatch** dirancang untuk mengatasi permasalahan mahasiswa yang kesulitan menemukan partner belajar yang cocok sesuai gaya belajar, jadwal ketersediaan, dan mata kuliah yang sedang diambil.
 
-## Agentic Development
+Aplikasi ini mengombinasikan algoritma pencocokan kompatibilitas cerdas, ruang obrolan langsung (*direct message* dan *group course*), manajemen agenda belajar terintegrasi Google Meet, forum diskusi komunitas, dan kustomisasi profil yang mendalam.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+---
 
-```bash
-composer require laravel/boost --dev
+## ✨ Fitur Utama
 
-php artisan boost:install
+### 1. ⚡ Algoritma Smart Matchmaking (`/discovery`)
+- **Skor Kompatibilitas Otomatis:** Menghitung persentase kecocokan (65%–98%) berdasarkan:
+  - Irisan mata kuliah semester ini (*Course Overlap*).
+  - Keselarasan gaya belajar (*Visual, Diskusi/Auditory, Praktik/Kinesthetic, Reading*).
+  - Kesamaan universitas dan program studi.
+  - Kesesuaian jadwal mingguan (*Weekly Availability*).
+- **Status Ajakan Dinamis:** Kartu kandidat menampilkan status relasi secara real-time (*Ajak Belajar, Menunggu Respon, Lihat Ajakan, atau Chat Sekarang*).
+- **Favorit Persisten:** Simpan calon partner belajar ke daftar favorit dengan integrasi penyimpanan lokal.
+- **Smart Match (FAB):** Fitur rekomendasi instan untuk menemukan partner terbaik yang belum terhubung dengan satu klik.
+
+### 2. 💬 Komunikasi & Kolaborasi (*Chat*) (`/chat`)
+- **Direct Message (DM):** Obrolan langsung antar partner belajar yang telah terhubung.
+- **Course Group Chat:** Ruang diskusi grup interaktif untuk setiap mata kuliah yang diambil.
+- **Manajemen Kontak & Riwayat:** Bersihkan riwayat chat dan hapus teman belajar dengan dialog konfirmasi yang aman.
+
+### 3. 📅 Manajemen Jadwal Belajar (`/schedule`)
+- **Kalender Bulanan & Mingguan:** Tampilan fleksibel untuk memantau agenda belajar per bulan maupun per pekan.
+- **Integrasi Google Meet Otomatis:** Pembuatan tautan video conference dengan format resmi yang valid.
+- **Pencatatan Rekap & Performa:** Menghitung total jam belajar, sesi selesai, dan rekapitulasi riwayat belajar.
+
+### 4. 🌐 Forum Komunitas Akademis (`/community`)
+- **Diskusi Interaktif:** Buat utas (*thread*) baru berdasarkan mata kuliah atau topik umum.
+- **Voting & Balasan:** Fitur upvote/downvote dan tanggapan bertingkat pada setiap utas.
+
+### 5. 👤 Profil Mahasiswa & Pengaturan (`/user-profile` & `/settings`)
+- **Setup Profil Lengkap:** Pengaturan nama, universitas, jurusan, bio, target belajar, dan upload foto profil nyata.
+- **Pengelolaan Mata Kuliah Interaktif:** Tambah dan hapus mata kuliah semester berjalan secara dinamis.
+- **Keamanan Akun:** Ubah kata sandi dengan validasi keamanan dan pengaturan privasi profil.
+
+### 6. 🎨 Custom Confirmation Modal
+- Menggantikan dialog bawaan browser yang kaku (`window.confirm()`) dengan modal kustom modern berbasis *Glassmorphism* dan animasi halus.
+
+---
+
+## 🛡️ Arsitektur & Keamanan
+
+Proyek ini dibangun dengan standar **Clean Architecture** dan **Security Best Practices**:
+
+- **Form Request Validation:** Seluruh input pengguna divalidasi ketat di lapisan Request (`app/Http/Requests/`) untuk mencegah bypass validasi.
+- **Proteksi Mass-Assignment:** Model Eloquent mengamankan atribut melalui `$fillable` eksplisit.
+- **Pencegahan DOM XSS:** Sanitasi data dinamis di sisi JavaScript menggunakan `escapeHtml()`.
+- **Proteksi CSRF:** Setiap permintaan AJAX/Fetch dilindungi dengan token CSRF Laravel (`X-CSRF-TOKEN`).
+- **Pemisahan Logika Bisnis:** Logika matchmaking kompleks diisolasi ke dalam Service Layer (`app/Services/MatchmakingService.php`).
+- **Autentikasi & Autorisasi:** Middleware `auth` dan pengecekan kepemilikan resource untuk operasi hapus data.
+
+---
+
+## 🛠️ Teknologi yang Digunakan
+
+### Backend
+- **Framework:** Laravel 12.x
+- **Bahasa:** PHP 8.2+
+- **Database:** SQLite / MySQL
+- **ORM:** Eloquent ORM
+- **Testing:** PHPUnit
+
+### Frontend
+- **Templating:** Blade Template Engine
+- **Styling:** Tailwind CSS 4.x + Custom CSS Design System
+- **Build Tool:** Vite 6.x
+- **Scripting:** Modern Vanilla JavaScript (ES6+)
+- **Icons & Fonts:** Google Material Symbols & Manrope Typography
+
+---
+
+## 📁 Struktur Folder
+
+```text
+StudyMatch/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── AuthController.php              # Autentikasi & setup profil
+│   │   │   ├── DashboardController.php         # Entry point dashboard
+│   │   │   └── Dashboard/                      # Controller modular per fitur
+│   │   │       ├── ChatController.php
+│   │   │       ├── CommunityController.php
+│   │   │       ├── DiscoveryController.php
+│   │   │       ├── NotificationController.php
+│   │   │       ├── ProfileController.php
+│   │   │       ├── ScheduleController.php
+│   │   │       └── SettingsController.php
+│   │   └── Requests/                           # Validasi Form Request terpusat
+│   │       ├── Auth/
+│   │       ├── Chat/
+│   │       ├── Community/
+│   │       ├── Profile/
+│   │       └── Schedule/
+│   ├── Models/                                 # User, Course, Message, Thread, dll.
+│   └── Services/                               # MatchmakingService
+├── database/
+│   ├── migrations/                             # Skema database terstruktur
+│   └── seeders/                                # Data awal untuk pengujian
+├── resources/
+│   ├── css/                                    # Stylesheet modular & variabel tema
+│   ├── js/                                     # Modul logika JavaScript per halaman
+│   └── views/                                  # Blade templates & layouts
+├── routes/
+│   └── web.php                                 # Definisi rute aplikasi
+└── tests/
+    └── Feature/                                # 36 Automated Feature Tests
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## 🚀 Panduan Instalasi Lokal
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Ikuti langkah-langkah berikut untuk menjalankan proyek di komputer lokal:
 
-## Code of Conduct
+### 1. Prasyarat
+- PHP >= 8.2 (dengan ekstensi `pdo`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`)
+- Composer >= 2.x
+- Node.js >= 18.x & NPM
+- Git
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 2. Kloning Repositori
+```bash
+git clone https://github.com/mgeraldiarr/StudyMatch.git
+cd StudyMatch
+```
 
-## Security Vulnerabilities
+### 3. Instal Dependensi Backend & Frontend
+```bash
+composer install
+npm install
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 4. Konfigurasi Lingkungan (`.env`)
+Salin file konfigurasi dan buat application key:
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## License
+### 5. Jalankan Migrasi & Seeder Database
+```bash
+php artisan migrate --seed
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 6. Buat Symlink Storage Publik
+```bash
+php artisan storage:link
+```
+
+### 7. Kompilasi Aset Frontend & Jalankan Server
+Buka dua tab terminal terpisah:
+
+**Terminal 1 (Vite Dev Server):**
+```bash
+npm run dev
+# atau untuk build produksi:
+npm run build
+```
+
+**Terminal 2 (Laravel Server):**
+```bash
+php artisan serve
+```
+
+Aplikasi siap diakses melalui browser di: **`http://127.0.0.1:8000`**
+
+---
+
+## 🧪 Pengujian Otomatis (Automated Testing)
+
+Proyek ini dilengkapi dengan unit & feature testing menyeluruh untuk menjamin kualitas dan stabilitas fitur:
+
+```bash
+php artisan test
+```
+
+### Hasil Pengujian:
+```text
+PASS  Tests\Feature\AuthTest
+PASS  Tests\Feature\ChatTest
+PASS  Tests\Feature\CommunityTest
+PASS  Tests\Feature\DiscoveryTest
+PASS  Tests\Feature\NotificationTest
+PASS  Tests\Feature\ProfileAndSettingsTest
+PASS  Tests\Feature\ScheduleTest
+
+Tests:    36 passed (118 assertions)
+Duration: 1.45s
+```
+
+---
+
+## 🔑 Akun Demo untuk Pengujian
+
+Gunakan kredensial berikut untuk login dan mencoba aplikasi:
+
+| Role / Akun | Email | Password |
+| :--- | :--- | :--- |
+| **Akun Demo Utama** | `student@ui.ac.id` | `secret123` |
+| **Registrasi Baru** | Akses `/register` untuk membuat akun dari awal | *Bebas* |
+
+---
+
+## 📄 Lisensi
+
+Proyek ini bersifat open-source dan dilisensikan di bawah [MIT License](LICENSE).
