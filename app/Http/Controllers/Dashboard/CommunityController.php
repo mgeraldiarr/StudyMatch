@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Dashboard\StoreThreadRequest;
 use App\Models\Thread;
 use App\Models\ThreadReply;
 use Illuminate\Http\JsonResponse;
@@ -65,16 +66,12 @@ class CommunityController extends Controller
     /**
      * Store a newly created thread in database.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreThreadRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'min:5', 'max:255'],
-            'channel' => ['required', 'string', 'max:100'],
-            'body' => ['required', 'string', 'min:10', 'max:5000'],
-        ]);
+        $validated = $request->validated();
 
         $thread = Thread::create([
-            'user_id' => Auth::id(),
+            'user_id' => Auth::id(), 
             'channel' => $validated['channel'],
             'title' => $validated['title'],
             'body' => $validated['body'],
