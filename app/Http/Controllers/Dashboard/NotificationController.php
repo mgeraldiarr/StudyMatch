@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Gate;
 
 class NotificationController extends Controller
 {
@@ -51,23 +52,15 @@ class NotificationController extends Controller
      */
     public function accept(Request $request, MatchRequest $matchRequest): JsonResponse
     {
-        /** @var User $user */
-        $user = Auth::user();
-
-        // Authorization check
-        if ($matchRequest->receiver_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kamu tidak memiliki izin untuk menerima permintaan ini.',
-            ], 403);
-        }
+        // ototisasi otomatis via MatchRequestPolicy
+        Gate::authorize('update', $matchRequest);
 
         $matchRequest->update(['status' => 'accepted']);
         $senderName = $matchRequest->sender->name ?? 'Teman Belajar';
 
         return response()->json([
             'success' => true,
-            'message' => "Permintaan belajar dari {$senderName} berhasil diterima! 🎉",
+            'message' => "Permintaan belajar dari {$senderName} berhasil diterima!",
             'match_request' => $matchRequest,
         ]);
     }
@@ -77,16 +70,8 @@ class NotificationController extends Controller
      */
     public function decline(Request $request, MatchRequest $matchRequest): JsonResponse
     {
-        /** @var User $user */
-        $user = Auth::user();
-
-        // Authorization check
-        if ($matchRequest->receiver_id !== $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kamu tidak memiliki izin untuk menolak permintaan ini.',
-            ], 403);
-        }
+        // otorisasi otomatis via MatchRequestPolicy
+        Gate::authorize('update', $matchRequest);
 
         $matchRequest->update(['status' => 'rejected']);
         $senderName = $matchRequest->sender->name ?? 'Teman Belajar';
