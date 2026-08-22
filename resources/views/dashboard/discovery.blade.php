@@ -7,10 +7,16 @@
 @endpush
 
 @section('content')
-    <script>
-        window.__INITIAL_CANDIDATES__ = @json($candidates ?? []);
-        window.__STATS__ = @json($stats ?? ['total_candidates' => 0, 'saved_count' => 0, 'highest_accuracy' => '94%']);
-    </script>
+<script id="candidates-data" type="application/json">
+    {!! json_encode($candidates ?? []) !!}
+</script>
+<script id="stats-data" type="application/json">
+    {!! json_encode($stats ?? ['total_candidates' => 0, 'saved_count' => 0, 'highest_accuracy' => '94%']) !!}
+</script>
+<script>
+    window.__INITIAL_CANDIDATES__ = JSON.parse(document.getElementById('candidates-data').textContent);
+    window.__STATS__ = JSON.parse(document.getElementById('stats-data').textContent);
+</script>
 
     <div class="main-inner">
         <div class="page-hero">

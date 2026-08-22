@@ -7,9 +7,15 @@
 @endpush
 
 @section('content')
+<script id="channels-data" type="application/json">
+  {!! json_encode($channels ?? []) !!}
+</script>
+<script id="threads-data" type="application/json">
+  {!! json_encode($threads ?? []) !!}
+</script>
 <script>
-    window.__INITIAL_CHANNELS__ = @json($channels ?? []);
-    window.__INITIAL_THREADS__ = @json($threads ?? []);
+  window.__INITIAL_CHANNELS__ = JSON.parse(document.getElementById('channels-data').textContent);
+  window.__INITIAL_THREADS__ = JSON.parse(document.getElementById('threads-data').textContent);
 </script>
 
 <div class="main-inner">

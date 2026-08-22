@@ -7,10 +7,16 @@
 @endpush
 
 @section('content')
-    <script>
-        window.__INITIAL_CONVERSATIONS__ = @json($conversations ?? []);
-        window.__AUTH_USER_ID__ = {{ auth()->id() }};
-    </script>
+<script id="conversations-data" type="application/json">
+    {!! json_encode($conversations ?? []) !!}
+</script>
+<script id="auth-user-data" type="application/json">
+    {!! json_encode(auth()->id()) !!}
+</script>
+<script>
+    window.__INITIAL_CONVERSATIONS__ = JSON.parse(document.getElementById('conversations-data').textContent);
+    window.__AUTH_USER_ID__ = JSON.parse(document.getElementById('auth-user-data').textContent);
+</script>
 
     <!-- Conversations panel -->
     <section class="conv-panel" id="convPanel">

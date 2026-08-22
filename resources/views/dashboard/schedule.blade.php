@@ -11,9 +11,15 @@
 @endpush
 
 @section('content')
+<script id="sessions-data" type="application/json">
+    {!! json_encode($sessions ?? []) !!}
+</script>
+<script id="recaps-data" type="application/json">
+    {!! json_encode($recaps ?? []) !!}
+</script>
 <script>
-    window.__INITIAL_SESSIONS__ = @json($sessions ?? []);
-    window.__INITIAL_RECAPS__ = @json($recaps ?? []);
+    window.__INITIAL_SESSIONS__ = JSON.parse(document.getElementById('sessions-data').textContent);
+    window.__INITIAL_RECAPS__ = JSON.parse(document.getElementById('recaps-data').textContent);
 </script>
 
 <div class="main-inner">
