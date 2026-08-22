@@ -23,7 +23,9 @@ class ChatController extends Controller
         $currentUser = Auth::user();
 
         // 1. Group Chats based on user's enrolled courses
-        $currentUser->load('courses');
+        $currentUser->load(['courses' => function ($query) {
+            $query->withCount('user');
+        }]);
         $conversations = [];
 
         foreach ($currentUser->courses as $course) {
@@ -41,7 +43,7 @@ class ChatController extends Controller
                 'name' => $course->name,
                 'lastMsg' => $lastGroupMsg ? ($lastGroupMsg->sender->name . ': ' . $lastGroupMsg->message) : 'Mulai diskusi grup mata kuliah!',
                 'time' => $lastGroupMsg ? $lastGroupMsg->created_at->diffForHumans(null, true) : '',
-                'online' => $course->users()->count(),
+                'online' => (int) $course->users_count,
                 'active' => false,
             ];
         }
