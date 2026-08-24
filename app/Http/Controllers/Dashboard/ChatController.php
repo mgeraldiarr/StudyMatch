@@ -24,7 +24,7 @@ class ChatController extends Controller
 
         // 1. Group Chats based on user's enrolled courses
         $currentUser->load(['courses' => function ($query) {
-            $query->withCount('user');
+            $query->withCount('users');
         }]);
         $conversations = [];
 
