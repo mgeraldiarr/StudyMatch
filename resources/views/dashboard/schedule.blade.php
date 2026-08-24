@@ -123,20 +123,20 @@
     <div class="modal-panel-body">
         <form id="sessionForm" onsubmit="createSession(event)">
             <div class="sess-form-group">
-                <label class="sess-label">Nama Sesi</label>
+                <label class="sess-label" for="sessName">Nama Sesi</label>
                 <input class="sess-input" id="sessName" type="text" placeholder="cth. Kalkulus Lanjut III" required>
             </div>
             <div class="sess-form-row">
                 <div class="sess-form-group" style="flex:1">
-                    <label class="sess-label">Tanggal</label>
+                    <label class="sess-label" for="sessDate">Tanggal</label>
                     <input class="sess-input" id="sessDate" type="date" required>
                 </div>
                 <div class="sess-form-group" style="flex:1">
-                    <label class="sess-label">Waktu</label>
+                    <label class="sess-label" for="sessTime">Waktu</label>
                     <input class="sess-input" id="sessTime" type="time" required>
                 </div>
                 <div class="sess-form-group" style="flex:0.6">
-                    <label class="sess-label">Durasi (mnt)</label>
+                    <label class="sess-label" for="sessDuration">Durasi (mnt)</label>
                     <select class="sess-input" id="sessDuration">
                         <option value="30">30</option>
                         <option value="60" selected>60</option>
@@ -146,7 +146,7 @@
                 </div>
             </div>
             <div class="sess-form-group">
-                <label class="sess-label">Partner (pisahkan dengan koma)</label>
+                <label class="sess-label" for="sessParticipants">Partner (pisahkan dengan koma)</label>
                 <input class="sess-input" id="sessParticipants" type="text" placeholder="cth. Sarah, Liam">
             </div>
             <div class="sess-form-check">
