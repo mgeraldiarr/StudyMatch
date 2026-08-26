@@ -1287,6 +1287,103 @@ input:checked + .slider:before {
   font-size: 14px;
 }
 
+/* ─── Gallery Tabs inside Modal ─── */
+.gallery-tabs-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  background: #f8fafc;
+  padding: 0 1rem;
+}
+
+.gallery-tab-btn {
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gallery-tab-btn:hover {
+  color: #0f172a;
+}
+
+.gallery-tab-btn.active {
+  color: #00a884;
+  border-bottom-color: #00a884;
+}
+
+/* ─── Media Gallery Grid ─── */
+.gallery-grid-full {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.75rem;
+}
+
+.gallery-item-card {
+  aspect-ratio: 1;
+  border-radius: 0.5rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.gallery-item-card:hover {
+  transform: scale(1.03);
+}
+.gallery-item-card img, .gallery-item-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ─── Filter Dropdown (Lainnya) ─── */
+.custom-filter-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.35rem;
+  background: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
+  min-width: 160px;
+  padding: 0.35rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.filter-dropdown-item {
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+.filter-dropdown-item:hover {
+  background: #f1f5f9;
+  color: #00a884;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 1024px) {
   .conv-panel {

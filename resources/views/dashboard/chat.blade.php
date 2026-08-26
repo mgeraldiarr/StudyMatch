@@ -7,19 +7,9 @@
 @endpush
 
 @section('content')
-<script id="conversations-data" type="application/json">
-  {
-    !!json_encode($conversations ?? []) !!
-  }
-</script>
-<script id="auth-user-data" type="application/json">
-  {
-    !!json_encode(auth() - > id()) !!
-  }
-</script>
 <script>
-  window.__INITIAL_CONVERSATIONS__ = JSON.parse(document.getElementById('conversations-data').textContent);
-  window.__AUTH_USER_ID__ = JSON.parse(document.getElementById('auth-user-data').textContent);
+  window.__INITIAL_CONVERSATIONS__ = {!! json_encode($conversations ?? []) !!};
+  window.__AUTH_USER__ = {!! json_encode($currentUser ?? null) !!};
 </script>
 
 <div class="chat-app-container">
@@ -68,9 +58,6 @@
     <!-- WhatsApp Header -->
     <header class="chat-hdr">
       <div class="chat-hdr-left" onclick="openInfoDrawer()" title="Klik untuk melihat info kontak / grup">
-        <button class="chat-back-btn btn btn-icon-only btn-ghost" onclick="event.stopPropagation(); toggleConvPanel()" title="Kembali" aria-label="Kembali ke daftar percakapan">
-          <span class="material-symbols-outlined">arrow_back</span>
-        </button>
         <div class="chat-hdr-av-wrap">
           <div class="chat-hdr-av" id="chatHdrAvatarContainer">
             <img id="chatHdrAvatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28" alt="" />
@@ -146,11 +133,20 @@
             <span class="attach-icon bg-blue"><span class="material-symbols-outlined">image</span></span>
             <span>Foto &amp; Gambar</span>
           </button>
+          <button class="attach-opt" onclick="triggerFileUpload('video')">
+            <span class="attach-icon bg-red"><span class="material-symbols-outlined">movie</span></span>
+            <span>Video Materi</span>
+          </button>
           <button class="attach-opt" onclick="triggerFileUpload('notes')">
             <span class="attach-icon bg-amber"><span class="material-symbols-outlined">menu_book</span></span>
             <span>Catatan Materi</span>
           </button>
         </div>
+
+        <!-- Hidden Real File Inputs -->
+        <input type="file" id="chatDocInput" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" onchange="handleFileSelected(event, 'document')">
+        <input type="file" id="chatImgInput" style="display:none" accept="image/*" onchange="handleFileSelected(event, 'image')">
+        <input type="file" id="chatVideoInput" style="display:none" accept="video/*" onchange="handleFileSelected(event, 'video')">
 
         <textarea class="input-ta" id="inputMsg" placeholder="Ketik pesan…" rows="1" onkeydown="handleInputKeyDown(event)" oninput="autoResizeTextarea(this)"></textarea>
 
@@ -404,6 +400,32 @@
       <input type="text" id="starredSearchInput" placeholder="Cari dalam pesan berbintang…" oninput="filterStarredMessages(this.value)" />
     </div>
     <div class="starred-messages-list" id="starredMessagesContainer"></div>
+  </div>
+  </div>
+</div>
+
+<!-- 7. Modal Galeri Media, Tautan & Dokumen -->
+<div class="modal-overlay" id="modalMediaGalleryOverlay" onclick="closeModal('modalMediaGallery')"></div>
+<div class="modal-panel wa-modal modal-lg" id="modalMediaGallery">
+  <div class="modal-panel-header">
+    <div class="modal-header-icon bg-blue">
+      <span class="material-symbols-outlined">perm_media</span>
+    </div>
+    <div style="flex:1">
+      <h3 style="font-size:1.1rem;font-weight:800;color:#0f172a;">Media, Tautan &amp; Dokumen</h3>
+      <p style="font-size:0.75rem;color:#64748b;">Semua berkas materi dan tautan yang dibagikan dalam obrolan ini</p>
+    </div>
+    <button class="btn btn-icon-only btn-ghost" onclick="closeModal('modalMediaGallery')">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+  <div class="gallery-tabs-bar">
+    <button class="gallery-tab-btn active" onclick="switchGalleryTab('media')" id="tabBtnMedia">Media (Foto/Video)</button>
+    <button class="gallery-tab-btn" onclick="switchGalleryTab('docs')" id="tabBtnDocs">Dokumen</button>
+    <button class="gallery-tab-btn" onclick="switchGalleryTab('links')" id="tabBtnLinks">Tautan Link</button>
+  </div>
+  <div class="modal-panel-body" style="padding:1.25rem; min-height: 240px; max-height: 420px; overflow-y: auto;">
+    <div id="galleryTabContent"></div>
   </div>
 </div>
 

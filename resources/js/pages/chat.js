@@ -130,7 +130,8 @@ function setChatFilter(filterName) {
   currentFilter = filterName;
 
   document.querySelectorAll(".conv-filter-chips .filter-chip").forEach((chip) => {
-    if (chip.getAttribute("data-filter") === filterName) {
+    // Also remove active from more dropdown if needed, though they don't have .filter-chip on items
+    if (chip.getAttribute("data-filter") === filterName || (chip.innerHTML.includes('Lainnya') && filterName.startsWith('custom_') && !document.querySelector(`.filter-chip[data-filter="${filterName}"]`))) {
       chip.classList.add("active");
     } else {
       chip.classList.remove("active");
@@ -139,6 +140,117 @@ function setChatFilter(filterName) {
 
   renderConvs();
 }
+
+function renderCustomListChips() {
+  const container = document.getElementById("filterChips");
+  if (!container) return;
+
+  // Hapus chip kustom sebelumnya jika ada
+  const existingCustom = container.querySelectorAll('.filter-chip.custom-list-chip');
+  existingCustom.forEach(el => el.remove());
+  
+  // Hapus tombol 'Lainnya' jika ada
+  const existingMore = container.querySelector('.filter-chip-more');
+  if (existingMore) existingMore.remove();
+
+  const addBtn = container.querySelector('.chip-add');
+
+  let chipsToShow = CUSTOM_LISTS;
+  let hasMore = false;
+  
+  if (CUSTOM_LISTS.length > 3) {
+    chipsToShow = CUSTOM_LISTS.slice(0, 3);
+    hasMore = true;
+  }
+
+  // Tambahkan maksimal 3 daftar
+  chipsToShow.forEach(list => {
+    const btn = document.createElement("button");
+    btn.className = "filter-chip custom-list-chip";
+    btn.dataset.filter = "custom_" + list.id;
+    btn.textContent = list.name;
+    btn.onclick = () => setChatFilter("custom_" + list.id);
+    if (addBtn) {
+      container.insertBefore(btn, addBtn);
+    } else {
+      container.appendChild(btn);
+    }
+  });
+
+  // Jika lebih dari 3, tambahkan tombol "Lainnya"
+  if (hasMore) {
+    const moreWrap = document.createElement("div");
+    moreWrap.className = "filter-chip-more";
+    moreWrap.style.position = "relative";
+    moreWrap.style.display = "inline-block";
+
+    const moreBtn = document.createElement("button");
+    moreBtn.className = "filter-chip";
+    moreBtn.innerHTML = `Lainnya <span class="material-symbols-outlined" style="font-size:14px; margin-left:4px;">expand_more</span>`;
+    moreBtn.onclick = () => toggleFilterDropdown();
+    moreWrap.appendChild(moreBtn);
+
+    const dropdown = document.createElement("div");
+    dropdown.className = "filter-dropdown-menu";
+    dropdown.style.display = "none";
+    dropdown.style.position = "absolute";
+    dropdown.style.top = "100%";
+    dropdown.style.left = "0";
+    dropdown.style.background = "#fff";
+    dropdown.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)";
+    dropdown.style.borderRadius = "8px";
+    dropdown.style.padding = "0.5rem";
+    dropdown.style.zIndex = "100";
+    dropdown.style.minWidth = "120px";
+    dropdown.style.marginTop = "0.5rem";
+    dropdown.id = "filterDropdownMenu";
+
+    const remainingLists = CUSTOM_LISTS.slice(3);
+    remainingLists.forEach(list => {
+      const dropBtn = document.createElement("button");
+      dropBtn.style.display = "block";
+      dropBtn.style.width = "100%";
+      dropBtn.style.textAlign = "left";
+      dropBtn.style.padding = "0.5rem";
+      dropBtn.style.border = "none";
+      dropBtn.style.background = "none";
+      dropBtn.style.borderRadius = "4px";
+      dropBtn.style.cursor = "pointer";
+      dropBtn.style.fontSize = "0.85rem";
+      dropBtn.textContent = list.name;
+      dropBtn.onmouseover = () => dropBtn.style.background = "#f1f5f9";
+      dropBtn.onmouseout = () => dropBtn.style.background = "none";
+      dropBtn.onclick = () => {
+        setChatFilter("custom_" + list.id);
+        toggleFilterDropdown();
+      };
+      dropdown.appendChild(dropBtn);
+    });
+
+    moreWrap.appendChild(dropdown);
+
+    if (addBtn) {
+      container.insertBefore(moreWrap, addBtn);
+    } else {
+      container.appendChild(moreWrap);
+    }
+  }
+}
+
+function toggleFilterDropdown() {
+  const menu = document.getElementById("filterDropdownMenu");
+  if (menu) {
+    menu.style.display = menu.style.display === "none" ? "block" : "none";
+  }
+}
+
+function closeFilterDropdown(e) {
+  const menu = document.getElementById("filterDropdownMenu");
+  if (menu && !e.target.closest('.filter-chip-more')) {
+    menu.style.display = "none";
+  }
+}
+document.addEventListener("click", closeFilterDropdown);
 
 function filterConvs(q) {
   filterQ = q;
@@ -669,7 +781,7 @@ function buildGroupInfoHTML(conv) {
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <h3 class="info-user-name">${escapeHtml(conv.name)}</h3>
-        <button class="btn btn-icon-only btn-ghost" style="width:28px;height:28px;" onclick="showToast('Edit nama grup hanya untuk admin mata kuliah')" title="Edit Nama Grup">
+        <button class="btn btn-icon-only btn-ghost" style="width:28px;height:28px;" onclick="editGroupName()" title="Edit Nama Grup">
           <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
         </button>
       </div>
@@ -698,11 +810,11 @@ function buildGroupInfoHTML(conv) {
 
     <!-- 2. Group Description & Syllabus Link -->
     <div class="info-card-section">
-      <div class="info-row-item" style="cursor:default;">
+      <div class="info-row-item" onclick="editGroupDescription()">
         <div class="info-row-left">
           <span class="material-symbols-outlined info-row-icon">info</span>
           <div class="info-row-text">
-            <span class="info-row-title">Deskripsi Mata Kuliah</span>
+            <span class="info-row-title">Deskripsi Mata Kuliah <span class="material-symbols-outlined" style="font-size:12px;margin-left:4px;">edit</span></span>
             <span class="info-row-sub">${escapeHtml(conv.description || "Forum diskusi materi kuliah, koordinasi tugas kelompok, dan sesi belajar bersama.")}</span>
           </div>
         </div>
@@ -711,12 +823,12 @@ function buildGroupInfoHTML(conv) {
 
     <!-- 3. Shared Media, Links & Docs -->
     <div class="info-card-section">
-      <div class="info-row-item" onclick="showToast('Menampilkan 24 materi dan rekaman kelas...')">
+      <div class="info-row-item" onclick="openMediaGalleryModal()">
         <div class="info-row-left">
           <span class="material-symbols-outlined info-row-icon">perm_media</span>
           <div class="info-row-text">
             <span class="info-row-title">Media, Tautan &amp; Dokumen</span>
-            <span class="info-row-sub">24 Berkas Kelas</span>
+            <span class="info-row-sub">Lihat Berkas Kelas</span>
           </div>
         </div>
         <div class="info-row-right">
@@ -901,27 +1013,7 @@ function saveCustomList() {
   showToast(`Daftar "${listName}" berhasil dibuat!`, "success");
 }
 
-function renderCustomListChips() {
-  const chipsContainer = document.getElementById("filterChips");
-  if (!chipsContainer) return;
 
-  // Remove previously added custom chips
-  chipsContainer.querySelectorAll(".filter-chip-custom").forEach((el) => el.remove());
-
-  const addBtn = chipsContainer.querySelector(".chip-add");
-  CUSTOM_LISTS.forEach((list) => {
-    const chip = document.createElement("button");
-    chip.className = `filter-chip filter-chip-custom ${currentFilter === `custom_${list.id}` ? "active" : ""}`;
-    chip.setAttribute("data-filter", `custom_${list.id}`);
-    chip.textContent = list.name;
-    chip.onclick = () => setChatFilter(`custom_${list.id}`);
-    if (addBtn) {
-      chipsContainer.insertBefore(chip, addBtn);
-    } else {
-      chipsContainer.appendChild(chip);
-    }
-  });
-}
 
 /* ─── Toggles (Favorite & Mute) ─── */
 function toggleFavorite(id) {
@@ -1153,6 +1245,9 @@ function triggerFileUpload(type) {
   } else if (type === "image") {
     const imgInput = document.getElementById("chatImgInput");
     if (imgInput) imgInput.click();
+  } else if (type === "video") {
+    const videoInput = document.getElementById("chatVideoInput");
+    if (videoInput) videoInput.click();
   } else {
     showToast("Membuka template catatan materi…", "info");
     const ta = document.getElementById("inputMsg");
@@ -1170,10 +1265,16 @@ function handleFileSelected(e, type) {
   const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
   if (!conv) return;
 
+  let msgText = `Berkas Dikirim: ${file.name}`;
+  if (type === "document") msgText = `📄 Dokumen: ${file.name}`;
+  else if (type === "image") msgText = `🖼️ Foto: ${file.name}`;
+  else if (type === "video") msgText = `🎥 Video: ${file.name}`;
+
   const newMsg = {
     id: Date.now(),
     type: "sent",
-    message: type === "document" ? `📄 Berkas Dikirim: ${file.name}` : `🖼️ Foto Dikirim: ${file.name}`,
+    message: msgText,
+    media_type: type, // document, image, video
     time: "Baru saja",
     sender_id: window.__AUTH_USER_ID__,
   };
@@ -1269,6 +1370,101 @@ function closeModal(modalId) {
   if (overlay) overlay.classList.remove("show");
 }
 
+/* ─── Gallery & Edit Features ─── */
+function editGroupName() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv || conv.type !== "group") return;
+
+  const newName = prompt("Ubah Nama Grup:", conv.name);
+  if (newName && newName.trim() !== "") {
+    conv.name = newName.trim();
+    
+    // Perbarui UI secara langsung (Real-time di sisi pengguna)
+    const nameEl = document.getElementById("chatHdrName");
+    if (nameEl) nameEl.textContent = conv.name;
+    
+    renderConvs();
+    renderInfoContent(conv);
+    showToast("Nama grup diperbarui! (Perlu Backend API untuk simpan permanen)", "success");
+  }
+}
+
+function editGroupDescription() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv || conv.type !== "group") return;
+
+  const newDesc = prompt("Ubah Deskripsi Grup:", conv.description || "");
+  if (newDesc !== null) {
+    conv.description = newDesc.trim() || "Tidak ada deskripsi.";
+    renderInfoContent(conv);
+    showToast("Deskripsi grup diperbarui! (Perlu Backend API untuk simpan permanen)", "success");
+  }
+}
+
+function openMediaGalleryModal() {
+  openModal("modalMediaGallery");
+  switchGalleryTab("media");
+}
+
+function switchGalleryTab(tabId) {
+  // Update Buttons
+  document.getElementById("tabBtnMedia").classList.remove("active");
+  document.getElementById("tabBtnDocs").classList.remove("active");
+  document.getElementById("tabBtnLinks").classList.remove("active");
+  
+  if (tabId === "media") document.getElementById("tabBtnMedia").classList.add("active");
+  else if (tabId === "docs") document.getElementById("tabBtnDocs").classList.add("active");
+  else if (tabId === "links") document.getElementById("tabBtnLinks").classList.add("active");
+
+  const content = document.getElementById("galleryTabContent");
+  if (!content) return;
+
+  // Filter messages based on tab
+  // (In real app, you would fetch from DB, here we simulate from MESSAGES array)
+  // For UI simulation:
+  
+  if (tabId === "media") {
+    content.innerHTML = `
+      <div class="gallery-grid-full">
+        <div class="gallery-item-card" onclick="showToast('Membuka Gambar')"><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&w=200&h=200&fit=crop" alt="img"/></div>
+        <div class="gallery-item-card" onclick="showToast('Membuka Gambar')"><img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&w=200&h=200&fit=crop" alt="img"/></div>
+        <div class="gallery-item-card" onclick="showToast('Membuka Gambar')"><img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?ixlib=rb-4.0.3&w=200&h=200&fit=crop" alt="img"/></div>
+      </div>
+    `;
+  } else if (tabId === "docs") {
+    content.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f1f5f9; border-radius:8px; cursor:pointer;" onclick="showToast('Membuka PDF')">
+          <span class="material-symbols-outlined" style="color:#ef4444; font-size:32px;">picture_as_pdf</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#0f172a; font-size:14px;">Materi Bab 1 - Pengantar.pdf</div>
+            <div style="font-size:12px; color:#64748b;">1.2 MB • Kemarin</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f1f5f9; border-radius:8px; cursor:pointer;" onclick="showToast('Membuka DOCX')">
+          <span class="material-symbols-outlined" style="color:#2563eb; font-size:32px;">article</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#0f172a; font-size:14px;">Tugas Kelompok 3.docx</div>
+            <div style="font-size:12px; color:#64748b;">800 KB • 12 Ags</div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (tabId === "links") {
+    content.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f1f5f9; border-radius:8px; cursor:pointer;" onclick="window.open('https://github.com', '_blank')">
+          <span class="material-symbols-outlined" style="color:#10b981; font-size:32px;">link</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#0f172a; font-size:14px; text-decoration:underline;">https://github.com/studymatch/repo</div>
+            <div style="font-size:12px; color:#64748b;">Dibagikan oleh Budi • 3 Hari lalu</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
 /* ─── Expose Global Functions ─── */
 window.setChatFilter = setChatFilter;
 window.filterConvs = filterConvs;
@@ -1310,6 +1506,14 @@ window.autoResizeTextarea = autoResizeTextarea;
 window.handleInputKeyDown = handleInputKeyDown;
 window.openModal = openModal;
 window.closeModal = closeModal;
+
+// New functions
+window.toggleFilterDropdown = toggleFilterDropdown;
+window.closeFilterDropdown = closeFilterDropdown;
+window.editGroupName = editGroupName;
+window.editGroupDescription = editGroupDescription;
+window.openMediaGalleryModal = openMediaGalleryModal;
+window.switchGalleryTab = switchGalleryTab;
 
 /* ─── Initialization ─── */
 document.addEventListener("DOMContentLoaded", () => {
