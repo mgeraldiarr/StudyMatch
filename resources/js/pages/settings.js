@@ -1,3 +1,7 @@
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
 function saveSetting(key, value) {
   const s = JSON.parse(localStorage.getItem("sm-settings") || "{}");
   s[key] = value;
@@ -18,7 +22,8 @@ function applyExamMode(enabled) {
 }
 
 function restoreCheckboxes() {
-  document.querySelectorAll(".toggle-wrap input[type=checkbox]").forEach((cb) => {
+  document.querySelectorAll(".toggle-wrap:not(.exam-toggle) input[type=checkbox]").forEach((cb) => {
+    if (cb.id === "privacyOnlineToggle") return;
     const row = cb.closest(".toggle-row");
     if (!row) return;
     const label = row.querySelector(".toggle-info p:first-child");
@@ -42,11 +47,82 @@ function restoreNotifCheckboxes() {
   });
 }
 
+/* ─── Save Account Settings ─── */
+async function saveAccountSettings(e) {
+  e.preventDefault();
+  const email = document.getElementById("accEmail")?.value.trim();
+  const academicStatus = document.getElementById("accAcademicStatus")?.value;
+  const password = document.getElementById("accPassword")?.value;
+  const btn = document.getElementById("btnSaveAccount");
+
+  if (!email) {
+    toast("Alamat email tidak boleh kosong!", "error");
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch("/settings/account", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({
+        email,
+        academic_status: academicStatus,
+        password: password || null,
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      toast(data.message || "Pengaturan akun berhasil disimpan! ✓", "success");
+      const pwdInput = document.getElementById("accPassword");
+      if (pwdInput) pwdInput.value = "";
+    } else {
+      toast(data.message || "Gagal menyimpan pengaturan akun.", "error");
+    }
+  } catch (err) {
+    toast("Terjadi kesalahan jaringan.", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ─── Toggle Online Status ─── */
+async function toggleOnlineStatus(isOnline) {
+  try {
+    const res = await fetch("/settings/privacy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({ is_online: isOnline }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      toast(`Status online ${isOnline ? 'diaktifkan' : 'dinonaktifkan'}`, "success");
+    }
+  } catch (err) {
+    toast("Gagal memperbarui status online.", "error");
+  }
+}
+
+window.saveAccountSettings = saveAccountSettings;
+window.toggleOnlineStatus = toggleOnlineStatus;
+
 document.addEventListener("DOMContentLoaded", () => {
-  /* ─── 1. Privacy toggles: restore + save ─── */
+  /* ─── 1. Privacy toggles ─── */
   restoreCheckboxes();
 
   document.querySelectorAll(".toggle-wrap:not(.exam-toggle) input").forEach((toggle) => {
+    if (toggle.id === "privacyOnlineToggle") return;
     toggle.addEventListener("change", (e) => {
       const row = toggle.closest(".toggle-row");
       const label = row.querySelector(".toggle-info p:first-child").textContent;
@@ -57,7 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* ─── 2. Notification checkboxes: restore + save ─── */
+  /* ─── 2. Notification checkboxes ─── */
   restoreNotifCheckboxes();
 
   document.querySelectorAll(".notif-table .cb").forEach((cb) => {
@@ -72,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* ─── 3. Language selector: restore + save ─── */
+  /* ─── 3. Language selector ─── */
   const langSelect = document.querySelector(".pref-card select");
   if (langSelect) {
     const savedLang = loadSetting("language", "id");
@@ -84,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ─── 4. Exam mode: restore + save ─── */
+  /* ─── 4. Exam mode ─── */
   const examToggle = document.querySelector(".exam-toggle input");
   if (examToggle) {
     const savedExam = loadSetting("exam-mode", false);

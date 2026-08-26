@@ -1,92 +1,41 @@
-/* ─── Data ─── */
-const CONVERSATIONS = [
-  {
-    id: 1,
-    type: "group",
-    icon: "architecture",
-    color: "purple",
-    name: "Advanced Calculus",
-    lastMsg: "Julian: Shared the PDF notes...",
-    time: "12:45",
-    online: 4,
-    active: true,
-  },
-  {
-    id: 2,
-    type: "group",
-    icon: "psychology",
-    color: "teal",
-    name: "Cognitive Theory",
-    lastMsg: "Let's meet at 5 PM tomorrow.",
-    time: "Yesterday",
-    active: false,
-  },
-  {
-    id: 3,
-    type: "dm",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBB8D51RVcHoQW8xs-en3Mv3DQU3vqf00QEDVmPbPhqspJ73V6mVGEKlm3hkcaUoXftISSeNMjLGP0wNRxl_UA4IBVvNWbl05Yc807ZyMhFZoMd_waC2fzK0fReLgCiMZccR21u4-C-ETnzOB21xlPSE69FCQpeef62VkZFrGahLkJP3lmxzaD2SvBmOJILBp1GBke9_DlEW2hNln0mD1qkZa7eVHNdtfNV0d6gG4GtdMoP_W-Clln4RBo6LB1jDDM9OtdpuSzCkvk",
-    name: "Elena Fisher",
-    lastMsg: "That paper was so difficult!",
-    time: "1h",
-    online: true,
-    active: false,
-  },
-  {
-    id: 4,
-    type: "dm",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuD84hcgXrtm7GRvIb7EcmgHvu9k1qy6_kUGH84nw3ckO9Jh3QoaxbjREzUhnvpJpkmhyxVI2A_sbdcJrq0x5axCqDgIwBql-EyaCB84xQZAfhjLxdi-iMgK9wB4Gg8QlJlqROCl-YDq57RIkgxQNZJk9QLyzcS8dNaFUMGtLg_jluXyoNqyLoHASUozRi0Qw8GuXrmfhrfvzs1b2YSYX3ClMnQbZw1jL1vChMm9pKyhNqwjTfZuQC8PVdp_gHE2PDh4dMKcdJaReeI",
-    name: "Marcus Wright",
-    lastMsg: "Ready for the review session?",
-    time: "3h",
-    online: false,
-    active: false,
-  },
-];
+/* ─── StudyMatch Chat Logic (Full Interactive & Secure) ─── */
 
-const MESSAGES = [
-  {
-    from: "Elena",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDZ-VR5XHbtoZrw07_xJp2dOibXlKV1ph4v9h0Ep25o519mGHSP3fYqdoizVuDhH1jDnG0V8QU1BxK_MY1FPunfb7_8DxkYiVzJKe5EyzCLekGkXYCghAQmKjovo71T9ofCZ7Q-P3k2wp1zMtJIvVPWXKM5xG2_Nonug38Ihs4xm_Xh_lG8GY0s8NlEnZDYV_g7zEw0kMX8j0WI_dB6DpyF0hSp26wJXD4LDoTy6z-NL_Ha689QKQM_H5ZD4LwdHFq-rv3Kk7qTzZ0",
-    text: "Siapa yang bisa selesaikan soal integral nomor 3 dari Chapter 5?",
-    time: "12:40 PM",
-    type: "recv",
-  },
-  {
-    from: "Marcus",
-    avatar:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuABxnHrPg2brF3ts30uuXQ6Kq6XfkRYWajrWEF3yrsnY-ck2qHZroYtB0sA23Vo6WBm-PT3HQnR7Kvxil9UIe2MalanOAlyT_mrYn28kdXohGu9_ZIUdGlidYze-D4FqTalQLeJg0KVHDNa-Aq4g20pe9kATtjAVT1pJ2IerbhaddYLRoiZ8u6c-8HDRc0nNRBy1e57QWtZVAs37YhvwuuodIZ1hZSH97EUW08SHW7md9_68gRB7Sds9ZOWu1_DmyXH892DF1rRgS4",
-    text: "Aku udah kerjain bareng Julian, cek file yang aku share",
-    time: "12:44 PM",
-    type: "recv",
-  },
-  {
-    from: "Me",
-    text: "Terima kasih Marcus! Bagian substitusi-nya yang bikin aku stuck",
-    time: "12:48 PM",
-    type: "sent",
-  },
-];
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
 
+function escapeHtml(str) {
+  if (typeof str !== "string") return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+let CONVERSATIONS = window.__INITIAL_CONVERSATIONS__ || [];
+let MESSAGES = [];
 let filterQ = "";
-let activeConvId = 1;
+let activeConvId = CONVERSATIONS.length > 0 ? CONVERSATIONS[0].id : null;
 
-/* ─── Render convs ─── */
+/* ─── Render Conversations ─── */
 function renderConvs() {
   const list = document.getElementById("convList");
+  if (!list) return;
+
   const q = filterQ.toLowerCase();
   let filtered = CONVERSATIONS.filter((c) => {
     return (
-      c.name.toLowerCase().includes(q) || c.lastMsg.toLowerCase().includes(q)
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.lastMsg && c.lastMsg.toLowerCase().includes(q))
     );
   });
 
   if (filtered.length === 0) {
-    list.innerHTML = `<div class="conv-empty">
-      <span class="material-symbols-outlined">search_off</span>
-      <span>Tidak ada percakapan yang cocok.</span>
+    list.innerHTML = `<div class="conv-empty" style="padding: 24px 16px; text-align: center; color: var(--text-muted);">
+      <span class="material-symbols-outlined" style="font-size: 32px; margin-bottom: 4px;">search_off</span>
+      <p style="font-size: 0.875rem;">Belum ada percakapan aktif. Temukan teman belajar di Discovery!</p>
     </div>`;
     return;
   }
@@ -99,7 +48,7 @@ function renderConvs() {
       let label = "";
       if (c.type === "group" && hasGroups) {
         hasGroups = false;
-        label = `<div class="conv-section-label">Grup Diskusi</div>`;
+        label = `<div class="conv-section-label">Grup Mata Kuliah</div>`;
       } else if (c.type === "dm" && hasDms) {
         hasDms = false;
         label = `<div class="conv-section-label">Pesan Langsung</div>`;
@@ -110,58 +59,110 @@ function renderConvs() {
 }
 
 function buildConvItem(c) {
-  return `<div class="conv-item${c.id === activeConvId ? " active" : ""}" onclick="selectConv(${c.id})">
+  const escapedName = escapeHtml(c.name);
+  const escapedLastMsg = escapeHtml(c.lastMsg);
+  const escapedTime = escapeHtml(c.time);
+  const isActive = String(c.id) === String(activeConvId);
+
+  return `<div class="conv-item${isActive ? " active" : ""}" onclick="selectConv('${c.id}')">
     ${
       c.type === "group"
-        ? `<div class="conv-av-icon ${c.color}"><span class="material-symbols-outlined">${c.icon}</span></div>`
-        : `<div class="conv-av"><img src="${c.avatar}" alt="" /></div>`
+        ? `<div class="conv-av-icon ${c.color || "purple"}"><span class="material-symbols-outlined">${c.icon || "school"}</span></div>`
+        : `<div class="conv-av"><img src="${escapeHtml(c.avatar)}" alt="${escapedName}" /></div>`
     }
     <div class="conv-info">
-      <div class="conv-name">${c.name}</div>
-      <div class="conv-msg">${c.lastMsg}</div>
+      <div class="conv-name">${escapedName}</div>
+      <div class="conv-msg">${escapedLastMsg}</div>
     </div>
-    <div class="conv-time">${c.time}</div>
+    <div class="conv-time">${escapedTime}</div>
   </div>`;
 }
 
-/* ─── Render messages ─── */
+/* ─── Render Messages ─── */
 function renderMsgs() {
   const area = document.getElementById("msgsArea");
-  area.innerHTML = `<div class="date-sep"><div class="date-sep-line"></div><span class="date-sep-text">Hari ini</span><div class="date-sep-line"></div></div>`;
+  if (!area) return;
+
+  if (MESSAGES.length === 0) {
+    area.innerHTML = `
+      <div class="date-sep"><div class="date-sep-line"></div><span class="date-sep-text">Hari ini</span><div class="date-sep-line"></div></div>
+      <div style="text-align:center; padding: 40px 16px; color: var(--text-muted); font-size: 0.875rem;">
+        Belum ada pesan. Mulai obrolan untuk berdiskusi! 👋
+      </div>
+    `;
+    return;
+  }
+
+  let html = `<div class="date-sep"><div class="date-sep-line"></div><span class="date-sep-text">Riwayat Pesan</span><div class="date-sep-line"></div></div>`;
+  
   MESSAGES.forEach((m) => {
-    area.innerHTML += `
+    const isSent = m.type === "sent";
+    const escapedText = escapeHtml(m.text);
+    const escapedTime = escapeHtml(m.time);
+    const escapedAvatar = escapeHtml(m.avatar);
+
+    html += `
       <div class="msg-group ${m.type}">
-        ${m.type === "recv" ? `<div class="msg-av"><img src="${m.avatar}" alt="" /></div>` : ""}
-        <div style="flex:1;${m.type === "sent" ? "display:flex;flex-direction:column;align-items:flex-end" : ""}">
-          <div class="msg-bubble">${m.text}</div>
-          <div class="msg-info">${m.time} ${m.type === "sent" ? '<span class="material-symbols-outlined" style="font-size:14px">done_all</span>' : ""}</div>
+        ${!isSent ? `<div class="msg-av"><img src="${escapedAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28'}" alt="" /></div>` : ""}
+        <div style="flex:1;${isSent ? "display:flex;flex-direction:column;align-items:flex-end" : ""}">
+          <div class="msg-bubble">${escapedText}</div>
+          <div class="msg-info">${escapedTime} ${isSent ? '<span class="material-symbols-outlined" style="font-size:14px">done_all</span>' : ""}</div>
         </div>
       </div>`;
   });
+
+  area.innerHTML = html;
+  area.scrollTop = area.scrollHeight;
 }
 
-/* ─── Actions ─── */
-function selectConv(id) {
+/* ─── Select Conversation ─── */
+async function selectConv(id) {
   activeConvId = id;
   renderConvs();
 
-  const conv = CONVERSATIONS.find((c) => c.id === id);
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(id));
   if (!conv) return;
 
   const nameEl = document.getElementById("chatHdrName");
   const statusEl = document.getElementById("chatHdrStatus");
-  const avContainer = document.querySelector(".chat-hdr-av");
+  const avImg = document.getElementById("chatHdrAvatar");
 
-  nameEl.textContent = conv.name;
+  if (nameEl) nameEl.textContent = conv.name;
+
   if (conv.type === "group") {
-    statusEl.innerHTML = `<span class="status-dot"></span>${conv.online} anggota aktif`;
-    avContainer.innerHTML = `<div class="conv-av-icon ${conv.color}" style="width:2.75rem;height:2.75rem;border-radius:9999px"><span class="material-symbols-outlined">${conv.icon}</span></div>`;
+    if (statusEl) statusEl.innerHTML = `<span class="status-dot"></span>${conv.online || 0} mahasiswa terdaftar`;
+    if (avImg) avImg.src = "https://lh3.googleusercontent.com/aida-public/AB6AXuDZ-VR5XHbtoZrw07_xJp2dOibXlKV1ph4v9h0Ep25o519mGHSP3fYqdoizVuDhH1jDnG0V8QU1BxK_MY1FPunfb7_8DxkYiVzJKe5EyzCLekGkXYCghAQmKjovo71T9ofCZ7Q-P3k2wp1zMtJIvVPWXKM5xG2_Nonug38Ihs4xm_Xh_lG8GY0s8NlEnZDYV_g7zEw0kMX8j0WI_dB6DpyF0hSp26wJXD4LDoTy6z-NL_Ha689QKQM_H5ZD4LwdHFq-rv3Kk7qTzZ0";
+
+    try {
+      const res = await fetch(`/chat/group-messages/${conv.target_id}`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        MESSAGES = data.messages || [];
+        renderMsgs();
+      }
+    } catch (err) {
+      console.error("Gagal memuat pesan grup:", err);
+    }
   } else {
-    statusEl.innerHTML = `<span class="status-dot${conv.online ? "" : " offline"}"></span>${conv.online ? "Online" : "Offline"}`;
-    avContainer.innerHTML = `<img src="${conv.avatar}" alt="" />`;
+    if (statusEl) statusEl.innerHTML = `<span class="status-dot${conv.online ? "" : " offline"}"></span>${conv.online ? "Online" : "Offline"}`;
+    if (avImg) avImg.src = conv.avatar;
+
+    try {
+      const res = await fetch(`/chat/messages/${conv.target_id}`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        MESSAGES = data.messages || [];
+        renderMsgs();
+      }
+    } catch (err) {
+      console.error("Gagal memuat pesan DM:", err);
+    }
   }
 
-  toast(`Membuka: ${conv.name}`);
   if (window.innerWidth < 900) {
     const panel = document.querySelector(".conv-panel");
     if (panel) panel.classList.remove("show");
@@ -173,29 +174,164 @@ function filterConvs(q) {
   renderConvs();
 }
 
-function sendMessage() {
+/* ─── Send Message ─── */
+async function sendMessage() {
   const ta = document.getElementById("inputMsg");
+  if (!ta) return;
   const msg = ta.value.trim();
   if (!msg) return;
-  MESSAGES.push({
-    from: "Me",
-    text: msg,
-    time: "Sekarang",
-    type: "sent",
-  });
-  renderMsgs();
-  const area = document.getElementById("msgsArea");
-  area.scrollTop = area.scrollHeight;
-  ta.value = "";
-  ta.style.height = "auto";
-  toast("Pesan terkirim ✓");
+
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv) {
+    toast("Pilih percakapan terlebih dahulu.", "info");
+    return;
+  }
+
+  const sendBtn = document.getElementById("sendBtn");
+  if (sendBtn) sendBtn.disabled = true;
+
+  const endpoint = conv.type === "group" 
+    ? `/chat/group-messages/${conv.target_id}` 
+    : `/chat/messages/${conv.target_id}`;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({ message: msg }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      MESSAGES.push(data.data);
+      conv.lastMsg = (conv.type === "group" ? "Me: " : "") + msg;
+      conv.time = "Baru saja";
+      renderMsgs();
+      renderConvs();
+      ta.value = "";
+      ta.style.height = "auto";
+    } else {
+      toast(data.message || "Gagal mengirim pesan.", "error");
+    }
+  } catch (err) {
+    toast("Terjadi kesalahan jaringan saat mengirim pesan.", "error");
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+  }
 }
 
-/* ─── Auto resize textarea ─── */
-document.getElementById("inputMsg").addEventListener("input", function () {
-  this.style.height = "auto";
-  this.style.height = Math.min(this.scrollHeight, 144) + "px";
-});
+/* ─── Clear Chat History ─── */
+async function clearCurrentChat() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv) return;
+
+  if (conv.type === "group") {
+    toast("Pesan grup tidak dapat dihapus sepihak.", "info");
+    return;
+  }
+
+  const confirmed = await (window.showConfirmModal ? window.showConfirmModal({
+    title: "Bersihkan Riwayat Chat",
+    message: `Apakah kamu yakin ingin menghapus seluruh riwayat pesan dengan ${conv.name}?`,
+    confirmText: "Bersihkan Chat",
+    cancelText: "Batal",
+    type: "danger",
+    icon: "delete_sweep"
+  }) : Promise.resolve(confirm(`Yakin ingin menghapus seluruh riwayat pesan dengan ${conv.name}?`)));
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/chat/conversations/${conv.target_id}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      MESSAGES = [];
+      conv.lastMsg = "Belum ada pesan.";
+      renderMsgs();
+      renderConvs();
+      toast(data.message || "Riwayat percakapan dibersihkan.", "success");
+    }
+  } catch (err) {
+    toast("Gagal membersihkan riwayat percakapan.", "error");
+  }
+}
+
+/* ─── Remove Partner Contact ─── */
+async function removeCurrentPartner() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv) return;
+
+  if (conv.type === "group") {
+    toast("Tidak dapat menghapus grup mata kuliah dari sini.", "info");
+    return;
+  }
+
+  const confirmed = await (window.showConfirmModal ? window.showConfirmModal({
+    title: "Hapus Teman Belajar",
+    message: `Apakah kamu yakin ingin menghapus ${conv.name} dari daftar teman belajarmu?`,
+    confirmText: "Hapus Kontak",
+    cancelText: "Batal",
+    type: "danger",
+    icon: "person_remove"
+  }) : Promise.resolve(confirm(`Hapus ${conv.name} dari daftar teman belajar?`)));
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/chat/partners/${conv.target_id}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      CONVERSATIONS = CONVERSATIONS.filter((c) => String(c.id) !== String(activeConvId));
+      activeConvId = CONVERSATIONS.length > 0 ? CONVERSATIONS[0].id : null;
+      MESSAGES = [];
+      renderConvs();
+      if (activeConvId) {
+        selectConv(activeConvId);
+      } else {
+        renderMsgs();
+      }
+      toast(data.message || "Kontak berhasil dihapus.", "success");
+    }
+  } catch (err) {
+    toast("Gagal menghapus kontak.", "error");
+  }
+}
+
+/* ─── Auto resize textarea & Enter key to send ─── */
+const inputMsg = document.getElementById("inputMsg");
+if (inputMsg) {
+  inputMsg.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 144) + "px";
+  });
+
+  inputMsg.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+}
 
 function toggleConvPanel() {
   const panel = document.querySelector(".conv-panel");
@@ -210,7 +346,11 @@ window.renderMsgs = renderMsgs;
 window.selectConv = selectConv;
 window.filterConvs = filterConvs;
 window.sendMessage = sendMessage;
+window.clearCurrentChat = clearCurrentChat;
+window.removeCurrentPartner = removeCurrentPartner;
 
 /* ─── Init ─── */
 renderConvs();
-renderMsgs();
+if (activeConvId) {
+  selectConv(activeConvId);
+}
