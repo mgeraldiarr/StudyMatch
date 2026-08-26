@@ -21,6 +21,9 @@ function animateCounter(el) {
 // Run after brief delay for visual effect
 setTimeout(() => {
   document.querySelectorAll("[data-target]").forEach(animateCounter);
+  if (window.location.hash === '#register') {
+    switchTab('register');
+  }
 }, 400);
 
 /* ── Tab switching ── */
@@ -216,8 +219,8 @@ function handleGoogle() {
 async function handleLogin(e) {
   e.preventDefault();
   clearAllMessages();
-  const email = document.getElementById("login-email").value.trim();
-  const pw = document.getElementById("login-password").value;
+  const email = document.getElementById("login-email")?.value.trim() || "";
+  const pw = document.getElementById("login-password")?.value || "";
   const remember = document.getElementById("remember-me")?.checked || false;
   let valid = true;
 
@@ -285,9 +288,9 @@ async function handleLogin(e) {
 async function handleRegister(e) {
   e.preventDefault();
   clearAllMessages();
-  const name = document.getElementById("reg-name").value.trim();
-  const email = document.getElementById("reg-email").value.trim();
-  const pw = document.getElementById("reg-password").value;
+  const name = document.getElementById("reg-name")?.value.trim() || "";
+  const email = document.getElementById("reg-email")?.value.trim() || "";
+  const pw = document.getElementById("reg-password")?.value || "";
   let valid = true;
 
   if (!name || name.length < 3) {
@@ -368,9 +371,12 @@ function handleForgot(e) {
 }
 
 /* ── Checkbox custom ── */
-document.getElementById("remember-me").addEventListener("change", function () {
-  // Visual handled by CSS :checked selector — nothing extra needed
-});
+const rememberMe = document.getElementById("remember-me");
+if (rememberMe) {
+  rememberMe.addEventListener("change", function () {
+    // Visual handled by CSS :checked selector — nothing extra needed
+  });
+}
 
 /* ── Keyboard: Enter to submit ── */
 document.addEventListener("keydown", (e) => {

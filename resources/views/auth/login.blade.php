@@ -108,14 +108,6 @@
               <div class="field-message" id="login-pw-msg"></div>
             </div>
 
-            <label class="checkbox-row">
-              <input type="checkbox" id="remember-me" />
-              <div class="checkbox-custom">
-                <span class="material-symbols-outlined checkmark">check</span>
-              </div>
-              <span class="checkbox-label">Ingat saya selama 30 hari</span>
-            </label>
-
             <button type="submit" class="btn-primary" id="login-submit">
               <div class="spinner"></div>
               <span class="btn-label">Masuk</span>

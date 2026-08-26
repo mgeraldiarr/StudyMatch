@@ -27,7 +27,7 @@
     </p>
 
     <div class="hero-cta reveal reveal-delay-3">
-      <a href="{{ route('login') }}" class="btn-primary">
+      <a href="{{ route('login') }}#register" class="btn-primary">
         Daftar Sekarang
         <span class="material-symbols-outlined icon-lg">arrow_forward</span>
       </a>
@@ -324,7 +324,7 @@
     <div class="cta-content">
       <h2>Siap Untuk Belajar<br>Lebih Cerdas?</h2>
       <p>Bergabunglah dengan ribuan mahasiswa lainnya dan temukan partner intelektualmu hari ini. Gratis selamanya.</p>
-      <a href="{{ route('login') }}" class="btn-white">
+      <a href="{{ route('login') }}#register" class="btn-white">
         Mulai Gratis Sekarang
         <span class="material-symbols-outlined icon-lg">arrow_forward</span>
       </a>
