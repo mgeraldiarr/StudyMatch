@@ -14,6 +14,8 @@ class Course extends Model
         'name',
         'code',
         'category',
+        'description',
+        'avatar',
     ];
 
     /**

@@ -14,15 +14,65 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+// Safe for embedding as a single-quoted JS string literal inside an HTML
+// event-handler attribute (e.g. onclick="fn('${value}')"). HTML attribute
+// entities are decoded by the browser BEFORE the JS is executed, so
+// escapeHtml() alone does not stop a raw quote from breaking out here -
+// quotes/backslashes must be JS-escaped instead of HTML-entity-escaped.
+function escapeForInlineHandler(str) {
+  if (typeof str !== "string") str = String(str ?? "");
+  return str
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 /* ─── State Management ─── */
-let CONVERSATIONS = window.__INITIAL_CONVERSATIONS__ || [];
+let CONVERSATIONS = [];
 let MESSAGES = [];
-let activeConvId = CONVERSATIONS.length > 0 ? CONVERSATIONS[0].id : null;
+let activeConvId = null;
 let currentFilter = "all";
 let filterQ = "";
 let pendingActionCallback = null;
 let callTimerInterval = null;
 let callSeconds = 0;
+
+function readInitialData() {
+  const convEl = document.getElementById("initialConversationsData");
+  const userEl = document.getElementById("authUserData");
+
+  if (convEl) {
+    try {
+      const parsed = JSON.parse(convEl.textContent || "[]");
+      if (Array.isArray(parsed)) CONVERSATIONS = parsed;
+    } catch (e) {
+      console.warn("Could not parse initial conversations:", e);
+    }
+  } else if (window.__INITIAL_CONVERSATIONS__) {
+    CONVERSATIONS = window.__INITIAL_CONVERSATIONS__;
+  }
+
+  if (userEl) {
+    try {
+      window.__AUTH_USER__ = JSON.parse(userEl.textContent || "null");
+      window.__AUTH_USER_ID__ = window.__AUTH_USER__ ? window.__AUTH_USER__.id : null;
+    } catch (e) {
+      console.warn("Could not parse auth user:", e);
+    }
+  }
+
+  if (!activeConvId && CONVERSATIONS.length > 0) {
+    activeConvId = CONVERSATIONS[0].id;
+  }
+}
+
+// Initial read attempt
+readInitialData();
 
 // Persistent or in-memory settings
 let STARRED_MESSAGES = JSON.parse(localStorage.getItem("sm_starred_msgs") || "[]");
@@ -338,7 +388,7 @@ function renderMsgs() {
             </div>
           </div>
           <div class="msg-actions-dropdown">
-            <button class="msg-drop-btn" onclick="toggleStarMessage(${m.id || idx}, '${escapedText.replace(/'/g, "\\'")}', '${escapedSenderName || (isSent ? "Saya" : conv.name)}', '${escapedTime}')" title="${isStarred ? "Hapus Bintang" : "Beri Bintang"}">
+            <button class="msg-drop-btn" onclick="toggleStarMessage(${m.id || idx}, '${escapeForInlineHandler(m.text || m.message || "")}', '${escapeForInlineHandler(m.sender_name || (m.sender ? m.sender.name : "") || (isSent ? "Saya" : conv.name))}', '${escapeForInlineHandler(m.time || "12:00")}')" title="${isStarred ? "Hapus Bintang" : "Beri Bintang"}">
               <span class="material-symbols-outlined">${isStarred ? "star_half" : "star"}</span>
             </button>
           </div>
@@ -351,12 +401,20 @@ function renderMsgs() {
 }
 
 /* ─── Select Conversation ─── */
+function toggleConvPanel() {
+  const container = document.querySelector(".chat-app-container");
+  if (container) container.classList.remove("chat-open");
+}
+
 async function selectConv(id) {
   activeConvId = id;
   renderConvs();
 
   const conv = CONVERSATIONS.find((c) => String(c.id) === String(id));
   if (!conv) return;
+
+  const container = document.querySelector(".chat-app-container");
+  if (container) container.classList.add("chat-open");
 
   const nameEl = document.getElementById("chatHdrName");
   const statusEl = document.getElementById("chatHdrStatus");
@@ -1082,11 +1140,24 @@ function confirmAction(actionType) {
     if (msgEl) msgEl.textContent = `Apakah Anda yakin ingin menghapus seluruh riwayat percakapan dengan ${conv.name}? Tindakan ini tidak dapat dibatalkan.`;
     if (execBtn) execBtn.textContent = "Bersihkan Chat";
     pendingActionCallback = async () => {
-      MESSAGES = [];
-      conv.lastMsg = "Belum ada pesan.";
-      renderMsgs();
-      renderConvs();
-      showToast("Riwayat percakapan dibersihkan.", "success");
+      try {
+        const res = await fetch(`/chat/conversations/${conv.target_id}`, {
+          method: "DELETE",
+          headers: { Accept: "application/json", "X-CSRF-TOKEN": getCsrfToken() },
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          MESSAGES = [];
+          conv.lastMsg = "Belum ada pesan.";
+          renderMsgs();
+          renderConvs();
+          showToast(data.message || "Riwayat percakapan dibersihkan.", "success");
+        } else {
+          showToast(data.message || "Gagal membersihkan riwayat percakapan.", "error");
+        }
+      } catch (err) {
+        showToast("Gagal membersihkan riwayat percakapan.", "error");
+      }
     };
   } else if (actionType === "delete_contact") {
     if (titleEl) titleEl.textContent = "Hapus Teman Belajar?";
@@ -1094,13 +1165,26 @@ function confirmAction(actionType) {
     if (msgEl) msgEl.textContent = `Apakah Anda yakin ingin menghapus ${conv.name} dari daftar teman belajar? Anda harus mengirim permintaan pertemanan lagi untuk terhubung.`;
     if (execBtn) execBtn.textContent = "Hapus Kontak";
     pendingActionCallback = async () => {
-      CONVERSATIONS = CONVERSATIONS.filter((c) => String(c.id) !== String(activeConvId));
-      activeConvId = CONVERSATIONS.length > 0 ? CONVERSATIONS[0].id : null;
-      closeInfoDrawer();
-      renderConvs();
-      if (activeConvId) selectConv(activeConvId);
-      else renderMsgs();
-      showToast("Kontak berhasil dihapus.", "success");
+      try {
+        const res = await fetch(`/chat/partners/${conv.target_id}`, {
+          method: "DELETE",
+          headers: { Accept: "application/json", "X-CSRF-TOKEN": getCsrfToken() },
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          CONVERSATIONS = CONVERSATIONS.filter((c) => String(c.id) !== String(activeConvId));
+          activeConvId = CONVERSATIONS.length > 0 ? CONVERSATIONS[0].id : null;
+          closeInfoDrawer();
+          renderConvs();
+          if (activeConvId) selectConv(activeConvId);
+          else renderMsgs();
+          showToast(data.message || "Kontak berhasil dihapus.", "success");
+        } else {
+          showToast(data.message || "Gagal menghapus kontak.", "error");
+        }
+      } catch (err) {
+        showToast("Gagal menghapus kontak.", "error");
+      }
     };
   } else if (actionType === "block_user") {
     if (titleEl) titleEl.textContent = `Blokir ${conv.name}?`;
@@ -1117,13 +1201,26 @@ function confirmAction(actionType) {
     if (msgEl) msgEl.textContent = `Apakah Anda yakin ingin keluar dari grup mata kuliah ${conv.name}?`;
     if (execBtn) execBtn.textContent = "Keluar Grup";
     pendingActionCallback = async () => {
-      CONVERSATIONS = CONVERSATIONS.filter((c) => String(c.id) !== String(activeConvId));
-      activeConvId = CONVERSATIONS.length > 0 ? CONVERSATIONS[0].id : null;
-      closeInfoDrawer();
-      renderConvs();
-      if (activeConvId) selectConv(activeConvId);
-      else renderMsgs();
-      showToast("Anda telah keluar dari grup.", "info");
+      try {
+        const res = await fetch(`/chat/group-messages/${conv.target_id}/leave`, {
+          method: "DELETE",
+          headers: { Accept: "application/json", "X-CSRF-TOKEN": getCsrfToken() },
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          CONVERSATIONS = CONVERSATIONS.filter((c) => String(c.id) !== String(activeConvId));
+          activeConvId = CONVERSATIONS.length > 0 ? CONVERSATIONS[0].id : null;
+          closeInfoDrawer();
+          renderConvs();
+          if (activeConvId) selectConv(activeConvId);
+          else renderMsgs();
+          showToast(data.message || "Anda telah keluar dari grup.", "info");
+        } else {
+          showToast(data.message || "Gagal keluar dari grup.", "error");
+        }
+      } catch (err) {
+        showToast("Gagal keluar dari grup.", "error");
+      }
     };
   } else if (actionType === "reset_link") {
     if (titleEl) titleEl.textContent = "Setel Ulang Tautan Undangan?";
@@ -1265,28 +1362,48 @@ function handleFileSelected(e, type) {
   const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
   if (!conv) return;
 
-  let msgText = `Berkas Dikirim: ${file.name}`;
-  if (type === "document") msgText = `📄 Dokumen: ${file.name}`;
-  else if (type === "image") msgText = `🖼️ Foto: ${file.name}`;
-  else if (type === "video") msgText = `🎥 Video: ${file.name}`;
+  showToast(`Mengunggah ${file.name}...`, "info");
 
-  const newMsg = {
-    id: Date.now(),
-    type: "sent",
-    message: msgText,
-    media_type: type, // document, image, video
-    time: "Baru saja",
-    sender_id: window.__AUTH_USER_ID__,
-  };
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("type", type);
+  
+  if (conv.type === "group") {
+    const courseId = conv.id.replace('group_', '');
+    formData.append("course_id", courseId);
+  } else {
+    formData.append("receiver_id", conv.id);
+  }
 
-  MESSAGES.push(newMsg);
-  conv.lastMsg = newMsg.message;
-  conv.lastMsgByMe = true;
-  conv.time = "Baru saja";
-  renderMsgs();
-  renderConvs();
-  showToast(`Berkas ${file.name} berhasil dilampirkan!`, "success");
-  e.target.value = "";
+  fetch('/chat/upload-media', {
+    method: 'POST',
+    headers: {
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+      'Accept': 'application/json'
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      MESSAGES.push(data.data);
+      conv.lastMsg = data.data.text;
+      conv.lastMsgByMe = true;
+      conv.time = "Baru saja";
+      renderMsgs();
+      renderConvs();
+      showToast(`Berkas ${file.name} berhasil dilampirkan!`, "success");
+    } else {
+      showToast(data.message || "Gagal mengunggah berkas.", "error");
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    showToast("Terjadi kesalahan saat mengunggah berkas.", "error");
+  })
+  .finally(() => {
+    e.target.value = "";
+  });
 }
 
 /* ─── Call Simulations ─── */
@@ -1377,15 +1494,35 @@ function editGroupName() {
 
   const newName = prompt("Ubah Nama Grup:", conv.name);
   if (newName && newName.trim() !== "") {
-    conv.name = newName.trim();
+    showToast("Menyimpan nama grup...", "info");
+    const courseId = conv.id.replace('group_', '');
     
-    // Perbarui UI secara langsung (Real-time di sisi pengguna)
-    const nameEl = document.getElementById("chatHdrName");
-    if (nameEl) nameEl.textContent = conv.name;
-    
-    renderConvs();
-    renderInfoContent(conv);
-    showToast("Nama grup diperbarui! (Perlu Backend API untuk simpan permanen)", "success");
+    fetch(`/chat/group-messages/${courseId}/update-info`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ name: newName.trim() })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        conv.name = data.data.name;
+        const nameEl = document.getElementById("chatHdrName");
+        if (nameEl) nameEl.textContent = conv.name;
+        renderConvs();
+        renderInfoContent(conv);
+        showToast("Nama grup berhasil diperbarui!", "success");
+      } else {
+        showToast(data.message || "Gagal memperbarui nama grup.", "error");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      showToast("Terjadi kesalahan sistem.", "error");
+    });
   }
 }
 
@@ -1395,9 +1532,32 @@ function editGroupDescription() {
 
   const newDesc = prompt("Ubah Deskripsi Grup:", conv.description || "");
   if (newDesc !== null) {
-    conv.description = newDesc.trim() || "Tidak ada deskripsi.";
-    renderInfoContent(conv);
-    showToast("Deskripsi grup diperbarui! (Perlu Backend API untuk simpan permanen)", "success");
+    showToast("Menyimpan deskripsi grup...", "info");
+    const courseId = conv.id.replace('group_', '');
+    
+    fetch(`/chat/group-messages/${courseId}/update-info`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ description: newDesc.trim() || "Tidak ada deskripsi." })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        conv.description = data.data.description;
+        renderInfoContent(conv);
+        showToast("Deskripsi grup berhasil diperbarui!", "success");
+      } else {
+        showToast(data.message || "Gagal memperbarui deskripsi grup.", "error");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      showToast("Terjadi kesalahan sistem.", "error");
+    });
   }
 }
 
@@ -1470,6 +1630,7 @@ window.setChatFilter = setChatFilter;
 window.filterConvs = filterConvs;
 window.clearSearch = clearSearch;
 window.selectConv = selectConv;
+window.toggleConvPanel = toggleConvPanel;
 window.sendMessage = sendMessage;
 window.toggleStarMessage = toggleStarMessage;
 window.openStarredMessagesModal = openStarredMessagesModal;
@@ -1517,6 +1678,7 @@ window.switchGalleryTab = switchGalleryTab;
 
 /* ─── Initialization ─── */
 document.addEventListener("DOMContentLoaded", () => {
+  readInitialData();
   renderCustomListChips();
   renderConvs();
   if (activeConvId) {

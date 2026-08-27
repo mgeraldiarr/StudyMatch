@@ -372,6 +372,15 @@
   color: var(--text-muted, #64748b);
 }
 
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
 .chat-hdr-actions {
   display: flex;
   gap: 0.25rem;
@@ -1395,6 +1404,10 @@ input:checked + .slider:before {
   }
 }
 
+.chat-back-btn {
+  display: none;
+}
+
 @media (max-width: 768px) {
   .chat-app-container {
     height: calc(100vh - var(--topbar-h, 60px));
@@ -1402,6 +1415,19 @@ input:checked + .slider:before {
   .conv-panel {
     width: 100%;
     max-width: none;
+    display: flex;
+  }
+  .chat-window {
+    display: none;
+  }
+  .chat-app-container.chat-open .conv-panel {
+    display: none;
+  }
+  .chat-app-container.chat-open .chat-window {
+    display: flex;
+  }
+  .chat-back-btn {
+    display: inline-flex;
   }
   .info-drawer {
     width: 100%;

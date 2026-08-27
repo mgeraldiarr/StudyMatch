@@ -7,9 +7,11 @@
 @endpush
 
 @section('content')
-<script>
-  window.__INITIAL_CONVERSATIONS__ = {!! json_encode($conversations ?? []) !!};
-  window.__AUTH_USER__ = {!! json_encode($currentUser ?? null) !!};
+<script id="initialConversationsData" type="application/json">
+  {!! json_encode($conversations ?? []) !!}
+</script>
+<script id="authUserData" type="application/json">
+  {!! json_encode($currentUser ?? null) !!}
 </script>
 
 <div class="chat-app-container">
@@ -57,6 +59,9 @@
   <main class="chat-window">
     <!-- WhatsApp Header -->
     <header class="chat-hdr">
+      <button class="btn btn-icon-only btn-ghost chat-back-btn" id="chatBackBtn" title="Kembali ke daftar percakapan" onclick="toggleConvPanel()">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
       <div class="chat-hdr-left" onclick="openInfoDrawer()" title="Klik untuk melihat info kontak / grup">
         <div class="chat-hdr-av-wrap">
           <div class="chat-hdr-av" id="chatHdrAvatarContainer">

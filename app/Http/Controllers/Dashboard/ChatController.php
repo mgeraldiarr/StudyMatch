@@ -15,6 +15,29 @@ use Illuminate\View\View;
 class ChatController extends Controller
 {
     /**
+     * Determine whether the given user is enrolled in the given course.
+     */
+    private function userBelongsToCourse(User $user, Course $course): bool
+    {
+        return $course->users()->where('users.id', $user->id)->exists();
+    }
+
+    /**
+     * Determine whether the two users have an accepted match with each other.
+     */
+    private function usersHaveAcceptedMatch(User $a, User $b): bool
+    {
+        return MatchRequest::where('status', 'accepted')
+            ->where(function ($query) use ($a, $b) {
+                $query->where('sender_id', $a->id)->where('receiver_id', $b->id);
+            })
+            ->orWhere(function ($query) use ($a, $b) {
+                $query->where('sender_id', $b->id)->where('receiver_id', $a->id);
+            })
+            ->exists();
+    }
+
+    /**
      * Display the chat and messaging page.
      */
     public function index(Request $request): View|JsonResponse
@@ -41,6 +64,7 @@ class ChatController extends Controller
                 'icon' => 'school',
                 'color' => 'purple',
                 'name' => $course->name,
+                'description' => $course->description,
                 'lastMsg' => $lastGroupMsg ? ($lastGroupMsg->sender->name . ': ' . $lastGroupMsg->message) : 'Mulai diskusi grup mata kuliah!',
                 'time' => $lastGroupMsg ? $lastGroupMsg->created_at->diffForHumans(null, true) : '',
                 'online' => (int) $course->users_count,
@@ -134,6 +158,11 @@ class ChatController extends Controller
                 'text' => $m->message,
                 'time' => $m->created_at->format('H:i'),
                 'type' => $m->sender_id === $currentUser->id ? 'sent' : 'recv',
+                'media' => $m->attachment_path ? [
+                    'url' => asset('storage/' . $m->attachment_path),
+                    'type' => $m->attachment_type,
+                    'name' => $m->attachment_name,
+                ] : null,
             ];
         });
 
@@ -203,6 +232,11 @@ class ChatController extends Controller
                 'text' => $m->message,
                 'time' => $m->created_at->format('H:i'),
                 'type' => $m->sender_id === $currentUser->id ? 'sent' : 'recv',
+                'media' => $m->attachment_path ? [
+                    'url' => asset('storage/' . $m->attachment_path),
+                    'type' => $m->attachment_type,
+                    'name' => $m->attachment_name,
+                ] : null,
             ];
         });
 
@@ -294,5 +328,128 @@ class ChatController extends Controller
             'success' => true,
             'message' => "Kontak {$user->name} berhasil dihapus dari daftar pesan.",
         ]);
+    }
+
+    /**
+     * Leave a course group chat.
+     */
+    public function leaveGroup(Request $request, Course $course): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if (!$this->userBelongsToCourse($currentUser, $course)) {
+            return response()->json(['success' => false, 'message' => 'Anda bukan anggota grup ini'], 403);
+        }
+
+        $course->users()->detach($currentUser->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Anda telah keluar dari grup {$course->name}.",
+        ]);
+    }
+
+    /**
+     * Update group course information.
+     */
+    public function updateGroupInfo(Request $request, Course $course): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if (!$this->userBelongsToCourse($currentUser, $course)) {
+            return response()->json(['success' => false, 'message' => 'Anda bukan anggota grup ini'], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        if (isset($validated['name'])) {
+            $course->name = $validated['name'];
+        }
+        if (isset($validated['description'])) {
+            $course->description = $validated['description'];
+        }
+
+        $course->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Informasi grup berhasil diperbarui',
+            'data' => [
+                'id' => $course->id,
+                'name' => $course->name,
+                'description' => $course->description,
+            ],
+        ]);
+    }
+
+    /**
+     * Upload media (document, image, video) to the chat.
+     */
+    public function uploadMedia(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:10240'], // Max 10MB
+            'type' => ['required', 'string', 'in:image,video,document'],
+            'receiver_id' => ['nullable', 'exists:users,id'],
+            'course_id' => ['nullable', 'exists:courses,id'],
+        ]);
+
+        if (!$request->receiver_id && !$request->course_id) {
+            return response()->json(['success' => false, 'message' => 'Target penerima tidak valid'], 400);
+        }
+
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if ($request->receiver_id) {
+            $receiver = User::findOrFail($request->receiver_id);
+            if (!$this->usersHaveAcceptedMatch($currentUser, $receiver)) {
+                return response()->json(['success' => false, 'message' => 'Anda tidak terhubung dengan pengguna ini'], 403);
+            }
+        }
+
+        if ($request->course_id) {
+            $course = Course::findOrFail($request->course_id);
+            if (!$this->userBelongsToCourse($currentUser, $course)) {
+                return response()->json(['success' => false, 'message' => 'Anda bukan anggota grup ini'], 403);
+            }
+        }
+
+        $file = $request->file('file');
+        $path = $file->store('chat_media', 'public');
+
+        $message = Message::create([
+            'sender_id' => $currentUser->id,
+            'receiver_id' => $request->receiver_id,
+            'course_id' => $request->course_id,
+            'message' => 'Berkas Dilampirkan',
+            'is_read' => $request->course_id ? true : false,
+            'attachment_path' => $path,
+            'attachment_type' => $request->type,
+            'attachment_name' => $file->getClientOriginalName(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berkas berhasil diunggah',
+            'data' => [
+                'id' => $message->id,
+                'from' => 'Me',
+                'avatar' => $currentUser->avatar,
+                'text' => $message->message,
+                'time' => $message->created_at->format('H:i'),
+                'type' => 'sent',
+                'media' => [
+                    'url' => asset('storage/' . $path),
+                    'type' => $request->type,
+                    'name' => $file->getClientOriginalName(),
+                ]
+            ],
+        ], 201);
     }
 }

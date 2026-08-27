@@ -54,6 +54,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/chat/group-messages/{course}', [ChatController::class, 'sendGroupMessage'])->name('chat.group.send');
     Route::delete('/chat/conversations/{user}', [ChatController::class, 'clearConversation'])->name('chat.clear');
     Route::delete('/chat/partners/{user}', [ChatController::class, 'removePartner'])->name('chat.remove');
+    Route::post('/chat/group-messages/{course}/update-info', [ChatController::class, 'updateGroupInfo'])->name('chat.group.update-info');
+    Route::delete('/chat/group-messages/{course}/leave', [ChatController::class, 'leaveGroup'])->name('chat.group.leave');
+    Route::post('/chat/upload-media', [ChatController::class, 'uploadMedia'])->name('chat.upload-media');
 
     // Community / Forum
     Route::post('/community/threads', [CommunityController::class, 'store'])->name('community.threads.store');
