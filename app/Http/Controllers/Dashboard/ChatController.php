@@ -135,6 +135,10 @@ class ChatController extends Controller
         /** @var User $currentUser */
         $currentUser = Auth::user();
 
+        if (!$this->usersHaveAcceptedMatch($currentUser, $user)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak terhubung dengan pengguna ini'], 403);
+        }
+
         // Mark incoming messages as read
         Message::where('sender_id', $user->id)
             ->where('receiver_id', $currentUser->id)
@@ -186,6 +190,10 @@ class ChatController extends Controller
         /** @var User $currentUser */
         $currentUser = Auth::user();
 
+        if (!$this->usersHaveAcceptedMatch($currentUser, $user)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak terhubung dengan pengguna ini'], 403);
+        }
+
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:2000'],
         ]);
@@ -218,6 +226,10 @@ class ChatController extends Controller
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
+
+        if (!$this->userBelongsToCourse($currentUser, $course)) {
+            return response()->json(['success' => false, 'message' => 'Anda bukan anggota grup ini'], 403);
+        }
 
         $messages = Message::where('course_id', $course->id)
             ->with('sender')
@@ -258,6 +270,10 @@ class ChatController extends Controller
     {
         /** @var User $currentUser */
         $currentUser = Auth::user();
+
+        if (!$this->userBelongsToCourse($currentUser, $course)) {
+            return response()->json(['success' => false, 'message' => 'Anda bukan anggota grup ini'], 403);
+        }
 
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:2000'],
@@ -392,8 +408,16 @@ class ChatController extends Controller
      */
     public function uploadMedia(Request $request): JsonResponse
     {
+        // Extensions are intentionally restricted to non-executable, non-scriptable
+        // formats (no svg/html/php/js) to prevent stored XSS via an uploaded file
+        // that gets served back from public storage.
         $request->validate([
-            'file' => ['required', 'file', 'max:10240'], // Max 10MB
+            'file' => [
+                'required',
+                'file',
+                'max:10240', // Max 10MB
+                'mimes:jpg,jpeg,png,gif,webp,mp4,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar',
+            ],
             'type' => ['required', 'string', 'in:image,video,document'],
             'receiver_id' => ['nullable', 'exists:users,id'],
             'course_id' => ['nullable', 'exists:courses,id'],
