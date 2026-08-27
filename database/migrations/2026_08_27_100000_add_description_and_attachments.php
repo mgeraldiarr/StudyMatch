@@ -12,14 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('courses', function (Blueprint $table) {
-            $table->text('description')->nullable()->after('name');
-            $table->string('avatar')->nullable()->after('description');
+            if (!Schema::hasColumn('courses', 'description')) {
+                $table->text('description')->nullable()->after('name');
+            }
+            if (!Schema::hasColumn('courses', 'avatar')) {
+                $table->string('avatar')->nullable()->after('description');
+            }
         });
 
         Schema::table('messages', function (Blueprint $table) {
-            $table->string('attachment_path')->nullable()->after('message');
-            $table->string('attachment_type')->nullable()->after('attachment_path'); // 'image', 'video', 'document'
-            $table->string('attachment_name')->nullable()->after('attachment_type');
+            if (!Schema::hasColumn('messages', 'attachment_path')) {
+                $table->string('attachment_path')->nullable()->after('message');
+            }
+            if (!Schema::hasColumn('messages', 'attachment_type')) {
+                $table->string('attachment_type')->nullable()->after('attachment_path'); // 'image', 'video', 'document'
+            }
+            if (!Schema::hasColumn('messages', 'attachment_name')) {
+                $table->string('attachment_name')->nullable()->after('attachment_type');
+            }
         });
     }
 
@@ -28,12 +38,21 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
-            $table->dropColumn(['description', 'avatar']);
-        });
+        $courseColumns = array_values(array_filter(['description', 'avatar'], fn ($col) => Schema::hasColumn('courses', $col)));
+        if (!empty($courseColumns)) {
+            Schema::table('courses', function (Blueprint $table) use ($courseColumns) {
+                $table->dropColumn($courseColumns);
+            });
+        }
 
-        Schema::table('messages', function (Blueprint $table) {
-            $table->dropColumn(['attachment_path', 'attachment_type', 'attachment_name']);
-        });
+        $messageColumns = array_values(array_filter(
+            ['attachment_path', 'attachment_type', 'attachment_name'],
+            fn ($col) => Schema::hasColumn('messages', $col)
+        ));
+        if (!empty($messageColumns)) {
+            Schema::table('messages', function (Blueprint $table) use ($messageColumns) {
+                $table->dropColumn($messageColumns);
+            });
+        }
     }
 };
