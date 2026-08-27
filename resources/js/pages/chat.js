@@ -370,6 +370,24 @@ function renderMsgs() {
     const escapedSenderName = escapeHtml(m.sender_name || (m.sender ? m.sender.name : ""));
     const isStarred = STARRED_MESSAGES.some((s) => s.id === (m.id || idx));
 
+    let mediaHtml = "";
+    if (m.media && m.media.url) {
+      if (m.media.type === "image") {
+        mediaHtml = `<div class="msg-media-wrap"><img src="${escapeHtml(m.media.url)}" alt="${escapeHtml(m.media.name || "Foto")}" onclick="window.open('${escapeHtml(m.media.url)}', '_blank')" /></div>`;
+      } else if (m.media.type === "video") {
+        mediaHtml = `<div class="msg-media-wrap"><video src="${escapeHtml(m.media.url)}" controls></video></div>`;
+      } else if (m.media.type === "document") {
+        mediaHtml = `
+          <a href="${escapeHtml(m.media.url)}" target="_blank" download="${escapeHtml(m.media.name || 'Dokumen')}" class="msg-media-doc">
+            <div class="msg-media-doc-icon"><span class="material-symbols-outlined">description</span></div>
+            <div class="msg-media-doc-info">
+              <div class="msg-media-doc-name">${escapeHtml(m.media.name || "Dokumen")}</div>
+              <div class="msg-media-doc-sub">Klik untuk mengunduh</div>
+            </div>
+          </a>`;
+      }
+    }
+
     html += `
       <div class="msg-group ${isSent ? "sent" : "recv"}">
         ${
@@ -380,7 +398,8 @@ function renderMsgs() {
         <div class="msg-bubble-wrap">
           <div class="msg-bubble">
             ${!isSent && conv.type === "group" && escapedSenderName ? `<span class="sender-tag">${escapedSenderName}</span>` : ""}
-            ${escapedText}
+            ${mediaHtml}
+            ${escapedText && escapedText !== "Berkas Dilampirkan" ? `<div class="msg-text">${escapedText}</div>` : (mediaHtml ? "" : escapedText)}
             <div class="msg-meta-row">
               ${isStarred ? '<span class="material-symbols-outlined msg-star-icon">star</span>' : ""}
               <span>${escapedTime}</span>
@@ -614,61 +633,80 @@ function closeInfoDrawer() {
   if (overlay) overlay.classList.remove("show");
 }
 
-function renderInfoContent(conv) {
+async function renderInfoContent(conv) {
   const body = document.getElementById("infoDrawerBody");
   const title = document.getElementById("infoDrawerTitle");
   if (!body) return;
 
+  body.innerHTML = `
+    <div style="text-align:center; padding:3rem 1rem; color:#64748b;">
+      <span class="material-symbols-outlined" style="font-size:2rem; animation: spin 1s linear infinite;">progress_activity</span>
+      <p style="margin-top:0.5rem; font-size:0.85rem;">Memuat informasi...</p>
+    </div>`;
+
   if (conv.type === "group") {
-    if (title) title.textContent = "Info Grup Mata Kuliah";
-    body.innerHTML = buildGroupInfoHTML(conv);
+    if (title) title.textContent = "Info Grup Belajar";
+    try {
+      const res = await fetch(`/chat/groups/${conv.target_id}/info`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        body.innerHTML = buildGroupInfoHTML(conv, data);
+      } else {
+        body.innerHTML = buildGroupInfoHTML(conv, null);
+      }
+    } catch (e) {
+      body.innerHTML = buildGroupInfoHTML(conv, null);
+    }
   } else {
     if (title) title.textContent = "Info Kontak Mahasiswa";
-    body.innerHTML = buildContactInfoHTML(conv);
+    try {
+      const res = await fetch(`/chat/contacts/${conv.target_id}/info`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        body.innerHTML = buildContactInfoHTML(conv, data);
+      } else {
+        body.innerHTML = buildContactInfoHTML(conv, null);
+      }
+    } catch (e) {
+      body.innerHTML = buildContactInfoHTML(conv, null);
+    }
   }
 }
 
 /* ─── HTML Builder for 1-on-1 Contact Info ─── */
-function buildContactInfoHTML(conv) {
+function buildContactInfoHTML(conv, data) {
   const isMuted = MUTED_CONVS.includes(String(conv.id));
   const isFav = FAVORITES.includes(String(conv.id));
-  const disappearingTimer = DISAPPEARING_SETTINGS[String(conv.id)] || "off";
-  const timerLabel =
-    disappearingTimer === "24h"
-      ? "24 Jam"
-      : disappearingTimer === "7d"
-      ? "7 Hari"
-      : disappearingTimer === "90d"
-      ? "90 Hari"
-      : "Mati";
+
+  const contact = (data && data.contact) || conv;
+  const mutualCourses = (data && data.mutual_courses) || [];
+  const sharedMedia = (data && data.shared_media) || [];
 
   return `
     <!-- 1. Profile Hero Section -->
     <div class="info-card-section info-profile-hero">
       <div class="info-avatar-large">
-        <img src="${escapeHtml(conv.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28")}" alt="${escapeHtml(conv.name)}" />
+        <img src="${escapeHtml(contact.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28")}" alt="${escapeHtml(contact.name)}" />
       </div>
-      <h3 class="info-user-name">${escapeHtml(conv.name)}</h3>
-      <p class="info-user-sub">${escapeHtml(conv.university || "Universitas Indonesia • Ilmu Komputer")}</p>
-      <span style="font-size:0.75rem;color:#059669;margin-top:2px;font-weight:600;">${conv.online ? "● Sedang Aktif" : "Terakhir aktif hari ini"}</span>
+      <h3 class="info-user-name">${escapeHtml(contact.name)}</h3>
+      <p class="info-user-sub">${escapeHtml(contact.university || "Universitas")} • ${escapeHtml(contact.major || "Mahasiswa")}</p>
+      <span style="font-size:0.75rem;color:${contact.is_online ? '#059669' : '#64748b'};margin-top:2px;font-weight:600;">
+        ${contact.is_online ? "● Sedang Aktif" : "● Terakhir aktif hari ini"}
+      </span>
 
-      <!-- Action Grid -->
-      <div class="info-action-grid">
-        <button class="info-action-btn" onclick="startVoiceCall()">
-          <span class="material-symbols-outlined">call</span>
-          <span>Audio</span>
-        </button>
-        <button class="info-action-btn" onclick="startVideoCall()">
-          <span class="material-symbols-outlined">videocam</span>
-          <span>Video</span>
-        </button>
+      <!-- Action Buttons (Clean & Direct) -->
+      <div class="info-action-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 1rem;">
         <button class="info-action-btn" onclick="toggleInChatSearch()">
           <span class="material-symbols-outlined">search</span>
-          <span>Cari</span>
+          <span>Cari Pesan</span>
         </button>
         <button class="info-action-btn" onclick="toggleFavorite('${conv.id}')">
           <span class="material-symbols-outlined" style="color:${isFav ? "#f59e0b" : "inherit"}">${isFav ? "star" : "star_border"}</span>
-          <span>Favorit</span>
+          <span>${isFav ? "Favorit ★" : "Beri Bintang"}</span>
         </button>
       </div>
     </div>
@@ -680,7 +718,16 @@ function buildContactInfoHTML(conv) {
           <span class="material-symbols-outlined info-row-icon">school</span>
           <div class="info-row-text">
             <span class="info-row-title">Gaya &amp; Minat Belajar</span>
-            <span class="info-row-sub">${escapeHtml(conv.learning_style || "Visual &amp; Problem Solving • Siap diskusi tugas")}</span>
+            <span class="info-row-sub">${escapeHtml(contact.learning_style || "Visual &amp; Problem Solving")}</span>
+          </div>
+        </div>
+      </div>
+      <div class="info-row-item" style="cursor:default;">
+        <div class="info-row-left">
+          <span class="material-symbols-outlined info-row-icon">description</span>
+          <div class="info-row-text">
+            <span class="info-row-title">Tentang Teman Belajar</span>
+            <span class="info-row-sub">${escapeHtml(contact.bio || "Siap diskusi materi tugas dan kelompok.")}</span>
           </div>
         </div>
       </div>
@@ -688,59 +735,39 @@ function buildContactInfoHTML(conv) {
         <div class="info-row-left">
           <span class="material-symbols-outlined info-row-icon">mail</span>
           <div class="info-row-text">
-            <span class="info-row-title">Email Kampus Terverifikasi</span>
-            <span class="info-row-sub">${escapeHtml(conv.email || "mahasiswa@ui.ac.id")}</span>
+            <span class="info-row-title">Email Kampus</span>
+            <span class="info-row-sub">${escapeHtml(contact.email || "mahasiswa@kampus.ac.id")}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 3. Shared Media, Links & Docs -->
+    <!-- 3. Shared Media Preview (Direct click to open) -->
     <div class="info-card-section">
-      <div class="info-row-item" onclick="showToast('Menampilkan seluruh galeri media & dokumen...')">
-        <div class="info-row-left">
-          <span class="material-symbols-outlined info-row-icon">perm_media</span>
-          <div class="info-row-text">
-            <span class="info-row-title">Media, Tautan &amp; Dokumen</span>
-            <span class="info-row-sub">12 File Materi Bersama</span>
-          </div>
-        </div>
-        <div class="info-row-right">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <span style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Berkas Bersama (${sharedMedia.length})</span>
       </div>
-      <div class="media-preview-grid">
-        <div class="media-thumb" onclick="showToast('Membuka PDF Catatan Kalkulus.pdf')">
-          <div style="width:100%;height:100%;background:#e0e7ff;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4338ca;font-size:0.7rem;font-weight:700;">
-            <span class="material-symbols-outlined">description</span>PDF
-          </div>
-        </div>
-        <div class="media-thumb" onclick="showToast('Membuka Gambar Slide 4.png')">
-          <img src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=150&auto=format&fit=crop&q=60" alt="slide" />
-        </div>
-        <div class="media-thumb" onclick="showToast('Membuka Ringkasan Pertemuan.docx')">
-          <div style="width:100%;height:100%;background:#ccfbf1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#0f766e;font-size:0.7rem;font-weight:700;">
-            <span class="material-symbols-outlined">article</span>DOCX
-          </div>
-        </div>
-      </div>
+      ${
+        sharedMedia.length > 0
+          ? `<div class="media-preview-grid">
+              ${sharedMedia.slice(0, 3).map(m => `
+                <div class="media-thumb" onclick="window.open('${escapeHtml(m.url)}', '_blank')" title="${escapeHtml(m.name)}">
+                  ${m.type === 'image' 
+                    ? `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.name)}" />`
+                    : `<div style="width:100%;height:100%;background:#e0e7ff;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4338ca;font-size:0.65rem;font-weight:700;padding:4px;text-align:center;overflow:hidden;">
+                        <span class="material-symbols-outlined" style="font-size:20px;">${m.type === 'video' ? 'videocam' : 'description'}</span>
+                        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(m.name)}</span>
+                      </div>`
+                  }
+                </div>
+              `).join('')}
+            </div>`
+          : `<div style="font-size:0.75rem; color:#94a3b8; padding:0.25rem 0;">Belum ada foto atau dokumen bersama.</div>`
+      }
     </div>
 
-    <!-- 4. Privacy & Notifications Settings -->
+    <!-- 4. Notifications Setting -->
     <div class="info-card-section">
-      <div class="info-row-item" onclick="openStarredMessagesModal()">
-        <div class="info-row-left">
-          <span class="material-symbols-outlined info-row-icon" style="color:#f59e0b;">star</span>
-          <div class="info-row-text">
-            <span class="info-row-title">Pesan Berbintang</span>
-            <span class="info-row-sub">${STARRED_MESSAGES.filter((s) => s.convId === activeConvId).length} Catatan tersimpan</span>
-          </div>
-        </div>
-        <div class="info-row-right">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </div>
-      </div>
-
       <div class="info-row-item">
         <div class="info-row-left">
           <span class="material-symbols-outlined info-row-icon">notifications</span>
@@ -756,57 +783,33 @@ function buildContactInfoHTML(conv) {
           </label>
         </div>
       </div>
-
-      <div class="info-row-item" onclick="openDisappearingModal()">
-        <div class="info-row-left">
-          <span class="material-symbols-outlined info-row-icon" style="color:#0d9488;">timer</span>
-          <div class="info-row-text">
-            <span class="info-row-title">Pesan Sementara</span>
-            <span class="info-row-sub">${timerLabel}</span>
-          </div>
-        </div>
-        <div class="info-row-right">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </div>
-      </div>
     </div>
 
     <!-- 5. Common Shared Groups -->
     <div class="info-card-section">
-      <span style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.5rem;">Grup yang Sama (2)</span>
-      <div class="info-row-item" onclick="showToast('Beralih ke grup Kalkulus III...')">
-        <div class="info-row-left">
-          <div class="conv-av-icon purple" style="width:2.2rem;height:2.2rem;"><span class="material-symbols-outlined" style="font-size:16px;">calculate</span></div>
-          <div class="info-row-text">
-            <span class="info-row-title">Kalkulus III</span>
-            <span class="info-row-sub">42 Mahasiswa terdaftar</span>
-          </div>
-        </div>
-      </div>
-      <div class="info-row-item" onclick="showToast('Beralih ke grup Algoritma & Pemrograman...')">
-        <div class="info-row-left">
-          <div class="conv-av-icon teal" style="width:2.2rem;height:2.2rem;"><span class="material-symbols-outlined" style="font-size:16px;">code</span></div>
-          <div class="info-row-text">
-            <span class="info-row-title">Algoritma &amp; Pemrograman</span>
-            <span class="info-row-sub">38 Mahasiswa terdaftar</span>
-          </div>
-        </div>
-      </div>
+      <span style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.5rem;">Grup yang Sama (${mutualCourses.length})</span>
+      ${
+        mutualCourses.length > 0
+          ? mutualCourses.map(mc => `
+            <div class="info-row-item" onclick="selectConv('group_${mc.id}'); closeInfoDrawer();">
+              <div class="info-row-left">
+                <div class="conv-av-icon purple" style="width:2.2rem;height:2.2rem;"><span class="material-symbols-outlined" style="font-size:16px;">school</span></div>
+                <div class="info-row-text">
+                  <span class="info-row-title">${escapeHtml(mc.name)}</span>
+                  <span class="info-row-sub">${mc.members_count} Mahasiswa terdaftar</span>
+                </div>
+              </div>
+            </div>
+          `).join('')
+          : `<div style="font-size:0.75rem; color:#94a3b8; padding:0.25rem 0;">Belum ada grup belajar yang sama.</div>`
+      }
     </div>
 
-    <!-- 6. Danger & Privacy Action Zone -->
+    <!-- 6. Danger Actions (Subtle & Clean) -->
     <div class="info-card-section">
       <button class="danger-btn-row" onclick="confirmAction('clear_chat')">
         <span class="material-symbols-outlined">delete_sweep</span>
         <span>Bersihkan Riwayat Obrolan</span>
-      </button>
-      <button class="danger-btn-row" onclick="confirmAction('block_user')">
-        <span class="material-symbols-outlined">block</span>
-        <span>Blokir ${escapeHtml(conv.name)}</span>
-      </button>
-      <button class="danger-btn-row" onclick="openReportModal('user')">
-        <span class="material-symbols-outlined">flag</span>
-        <span>Laporkan Mahasiswa ke StudyMatch</span>
       </button>
       <button class="danger-btn-row" onclick="confirmAction('delete_contact')">
         <span class="material-symbols-outlined">person_remove</span>
@@ -816,106 +819,87 @@ function buildContactInfoHTML(conv) {
 }
 
 /* ─── HTML Builder for Group / Course Info ─── */
-function buildGroupInfoHTML(conv) {
+function buildGroupInfoHTML(conv, data) {
   const isMuted = MUTED_CONVS.includes(String(conv.id));
-  const isFav = FAVORITES.includes(String(conv.id));
-  const disappearingTimer = DISAPPEARING_SETTINGS[String(conv.id)] || "off";
-  const timerLabel =
-    disappearingTimer === "24h"
-      ? "24 Jam"
-      : disappearingTimer === "7d"
-      ? "7 Hari"
-      : disappearingTimer === "90d"
-      ? "90 Hari"
-      : "Mati";
+
+  const group = (data && data.group) || conv;
+  const members = (data && data.members) || [];
+  const sharedMedia = (data && data.shared_media) || [];
 
   return `
     <!-- 1. Group Profile Hero -->
     <div class="info-card-section info-profile-hero">
       <div class="info-avatar-large">
-        <div style="width:100%;height:100%;background:#e0e7ff;color:#4338ca;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">
+        <div style="width:100%;height:100%;background:#e0e7ff;color:#4338ca;display:flex;align-items:center;justify-content:center;font-size:2.5rem;border-radius:50%;">
           <span class="material-symbols-outlined" style="font-size:3.5rem;">groups</span>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <h3 class="info-user-name">${escapeHtml(conv.name)}</h3>
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+        <h3 class="info-user-name">${escapeHtml(group.name)}</h3>
         <button class="btn btn-icon-only btn-ghost" style="width:28px;height:28px;" onclick="editGroupName()" title="Edit Nama Grup">
           <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
         </button>
       </div>
-      <p class="info-user-sub">Grup Resmi Mata Kuliah • ${conv.online || 28} Mahasiswa</p>
+      <p class="info-user-sub">${escapeHtml(group.category || "Grup Belajar")} • ${members.length || group.online || 1} Anggota Mahasiswa</p>
 
-      <!-- Action Grid -->
-      <div class="info-action-grid">
-        <button class="info-action-btn" onclick="startVoiceCall()">
-          <span class="material-symbols-outlined">call</span>
-          <span>Audio</span>
-        </button>
-        <button class="info-action-btn" onclick="startVideoCall()">
-          <span class="material-symbols-outlined">videocam</span>
-          <span>Video</span>
-        </button>
-        <button class="info-action-btn" onclick="openModal('modalGroupInvite')">
-          <span class="material-symbols-outlined">person_add</span>
-          <span>Undang</span>
+      <!-- Action Buttons (Clean & Direct) -->
+      <div class="info-action-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 1rem;">
+        <button class="info-action-btn" onclick="copyGroupInviteLink()">
+          <span class="material-symbols-outlined">link</span>
+          <span>Salin Link</span>
         </button>
         <button class="info-action-btn" onclick="toggleInChatSearch()">
           <span class="material-symbols-outlined">search</span>
-          <span>Cari</span>
+          <span>Cari Pesan</span>
         </button>
       </div>
     </div>
 
-    <!-- 2. Group Description & Syllabus Link -->
+    <!-- 2. Group Description -->
     <div class="info-card-section">
       <div class="info-row-item" onclick="editGroupDescription()">
         <div class="info-row-left">
           <span class="material-symbols-outlined info-row-icon">info</span>
           <div class="info-row-text">
-            <span class="info-row-title">Deskripsi Mata Kuliah <span class="material-symbols-outlined" style="font-size:12px;margin-left:4px;">edit</span></span>
-            <span class="info-row-sub">${escapeHtml(conv.description || "Forum diskusi materi kuliah, koordinasi tugas kelompok, dan sesi belajar bersama.")}</span>
+            <span class="info-row-title">Deskripsi Grup <span class="material-symbols-outlined" style="font-size:12px;margin-left:4px;">edit</span></span>
+            <span class="info-row-sub">${escapeHtml(group.description || "Forum diskusi materi kuliah dan belajar bersama.")}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 3. Shared Media, Links & Docs -->
+    <!-- 3. Shared Media Preview (Direct click to open) -->
     <div class="info-card-section">
-      <div class="info-row-item" onclick="openMediaGalleryModal()">
-        <div class="info-row-left">
-          <span class="material-symbols-outlined info-row-icon">perm_media</span>
-          <div class="info-row-text">
-            <span class="info-row-title">Media, Tautan &amp; Dokumen</span>
-            <span class="info-row-sub">Lihat Berkas Kelas</span>
-          </div>
-        </div>
-        <div class="info-row-right">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <span style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Berkas Bersama (${sharedMedia.length})</span>
       </div>
+      ${
+        sharedMedia.length > 0
+          ? `<div class="media-preview-grid">
+              ${sharedMedia.slice(0, 3).map(m => `
+                <div class="media-thumb" onclick="window.open('${escapeHtml(m.url)}', '_blank')" title="${escapeHtml(m.name)}">
+                  ${m.type === 'image' 
+                    ? `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.name)}" />`
+                    : `<div style="width:100%;height:100%;background:#e0e7ff;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#4338ca;font-size:0.65rem;font-weight:700;padding:4px;text-align:center;overflow:hidden;">
+                        <span class="material-symbols-outlined" style="font-size:20px;">${m.type === 'video' ? 'videocam' : 'description'}</span>
+                        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">${escapeHtml(m.name)}</span>
+                      </div>`
+                  }
+                </div>
+              `).join('')}
+            </div>`
+          : `<div style="font-size:0.75rem; color:#94a3b8; padding:0.25rem 0;">Belum ada berkas materi yang dikirim.</div>`
+      }
     </div>
 
-    <!-- 4. Group Settings -->
+    <!-- 4. Group Notifications -->
     <div class="info-card-section">
-      <div class="info-row-item" onclick="openStarredMessagesModal()">
-        <div class="info-row-left">
-          <span class="material-symbols-outlined info-row-icon" style="color:#f59e0b;">star</span>
-          <div class="info-row-text">
-            <span class="info-row-title">Pesan Berbintang</span>
-            <span class="info-row-sub">${STARRED_MESSAGES.filter((s) => s.convId === activeConvId).length} Catatan tersimpan</span>
-          </div>
-        </div>
-        <div class="info-row-right">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </div>
-      </div>
-
       <div class="info-row-item">
         <div class="info-row-left">
           <span class="material-symbols-outlined info-row-icon">notifications</span>
           <div class="info-row-text">
             <span class="info-row-title">Bisukan Notifikasi Grup</span>
-            <span class="info-row-sub">Senyapkan notifikasi diskusi kelas</span>
+            <span class="info-row-sub">Senyapkan notifikasi diskusi</span>
           </div>
         </div>
         <div class="info-row-right">
@@ -925,57 +909,49 @@ function buildGroupInfoHTML(conv) {
           </label>
         </div>
       </div>
-
-      <div class="info-row-item" onclick="openDisappearingModal()">
-        <div class="info-row-left">
-          <span class="material-symbols-outlined info-row-icon" style="color:#0d9488;">timer</span>
-          <div class="info-row-text">
-            <span class="info-row-title">Pesan Sementara</span>
-            <span class="info-row-sub">${timerLabel}</span>
-          </div>
-        </div>
-        <div class="info-row-right">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </div>
-      </div>
     </div>
 
-    <!-- 5. Group Members Section -->
+    <!-- 5. Group Members Section (Real Database Enrolled Members) -->
     <div class="info-card-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-        <span style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Daftar Anggota (${conv.online || 28})</span>
-        <button class="btn btn-ghost btn-sm" onclick="openModal('modalGroupInvite')" style="color:#00a884;padding:2px 8px;font-size:0.75rem;">
-          <span class="material-symbols-outlined" style="font-size:14px;">link</span> Undang Tautan
+        <span style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Daftar Anggota (${members.length || 1})</span>
+        <button class="btn btn-ghost btn-sm" onclick="copyGroupInviteLink()" style="color:#00a884;padding:2px 8px;font-size:0.75rem;">
+          <span class="material-symbols-outlined" style="font-size:14px;">link</span> Salin Tautan
         </button>
       </div>
 
-      <!-- Member Items -->
-      <div class="info-row-item" style="cursor:default;">
-        <div class="info-row-left">
-          <div class="conv-av" style="width:2.4rem;height:2.4rem;">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Admin" />
-          </div>
-          <div class="info-row-text">
-            <span class="info-row-title">Dr. Ir. Hendra Gunawan <span style="background:#d9fdd3;color:#006045;font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:4px;">Dosen Pengampu</span></span>
-            <span class="info-row-sub">Koordinator Akademik</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="info-row-item" style="cursor:default;">
-        <div class="info-row-left">
-          <div class="conv-av" style="width:2.4rem;height:2.4rem;">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28" alt="Saya" />
-          </div>
-          <div class="info-row-text">
-            <span class="info-row-title">Anda <span style="background:#e0e7ff;color:#4338ca;font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:4px;">Mahasiswa</span></span>
-            <span class="info-row-sub">Peserta Mata Kuliah</span>
-          </div>
-        </div>
-      </div>
+      ${
+        members.length > 0
+          ? members.map(u => `
+            <div class="info-row-item" style="cursor:default;">
+              <div class="info-row-left">
+                <div class="conv-av" style="width:2.4rem;height:2.4rem;">
+                  <img src="${escapeHtml(u.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28")}" alt="${escapeHtml(u.name)}" />
+                </div>
+                <div class="info-row-text">
+                  <span class="info-row-title">${escapeHtml(u.name)} ${u.is_me ? '<span style="background:#e0e7ff;color:#4338ca;font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:4px;">Anda</span>' : ''}</span>
+                  <span class="info-row-sub">${escapeHtml(u.university || "Mahasiswa")} • ${escapeHtml(u.major || "Ilmu Komputer")}</span>
+                </div>
+              </div>
+            </div>
+          `).join('')
+          : `
+            <div class="info-row-item" style="cursor:default;">
+              <div class="info-row-left">
+                <div class="conv-av" style="width:2.4rem;height:2.4rem;">
+                  <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28" alt="Anda" />
+                </div>
+                <div class="info-row-text">
+                  <span class="info-row-title">Anda <span style="background:#e0e7ff;color:#4338ca;font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:700;margin-left:4px;">Pembuat Grup</span></span>
+                  <span class="info-row-sub">Belum ada anggota lain yang bergabung</span>
+                </div>
+              </div>
+            </div>
+          `
+      }
     </div>
 
-    <!-- 6. Group Danger Zone -->
+    <!-- 6. Group Danger Zone (Clean & Direct) -->
     <div class="info-card-section">
       <button class="danger-btn-row" onclick="confirmAction('clear_group_chat')">
         <span class="material-symbols-outlined">delete_sweep</span>
@@ -983,17 +959,13 @@ function buildGroupInfoHTML(conv) {
       </button>
       <button class="danger-btn-row" onclick="confirmAction('leave_group')">
         <span class="material-symbols-outlined">logout</span>
-        <span>Keluar dari Grup Mata Kuliah</span>
-      </button>
-      <button class="danger-btn-row" onclick="openReportModal('group')">
-        <span class="material-symbols-outlined">flag</span>
-        <span>Laporkan Grup ke StudyMatch</span>
+        <span>Keluar dari Grup Belajar</span>
       </button>
     </div>
 
     <!-- 7. Footer Group Metadata -->
     <div style="padding:1rem;text-align:center;color:#94a3b8;font-size:0.72rem;">
-      Grup dibuat oleh Koordinator Kelas pada 12 Agustus 2026 pukul 09:00 WIB
+      Grup dibuat pada ${escapeHtml(group.created_at || "Baru saja")}
     </div>`;
 }
 
@@ -1250,16 +1222,6 @@ function openReportModal(type) {
   openModal("modalReport");
 }
 
-function submitReport() {
-  const reason = document.getElementById("reportReason")?.value;
-  if (!reason) {
-    showToast("Silakan pilih alasan laporan terlebih dahulu.", "info");
-    return;
-  }
-  closeModal("modalReport");
-  showToast("Laporan Anda telah dikirimkan ke tim moderasi StudyMatch. Terima kasih.", "success");
-}
-
 /* ─── In-Chat Search ─── */
 function toggleInChatSearch() {
   const bar = document.getElementById("inChatSearchBar");
@@ -1487,42 +1449,59 @@ function closeModal(modalId) {
   if (overlay) overlay.classList.remove("show");
 }
 
-/* ─── Gallery & Edit Features ─── */
+/* ─── Group Name & Description Edit Modals ─── */
 function editGroupName() {
   const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
   if (!conv || conv.type !== "group") return;
 
-  const newName = prompt("Ubah Nama Grup:", conv.name);
-  if (newName && newName.trim() !== "") {
-    showToast("Menyimpan nama grup...", "info");
-    const courseId = conv.id.replace('group_', '');
-    
-    fetch(`/chat/group-messages/${courseId}/update-info`, {
-      method: 'POST',
+  const input = document.getElementById("inputEditGroupName");
+  if (input) input.value = conv.name || "";
+  openModal("modalEditGroupName");
+  setTimeout(() => input && input.focus(), 100);
+}
+
+async function submitEditGroupName() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv || conv.type !== "group") return;
+
+  const input = document.getElementById("inputEditGroupName");
+  const newName = input ? input.value.trim() : "";
+  if (!newName) {
+    showToast("Nama grup tidak boleh kosong.", "info");
+    return;
+  }
+
+  const btn = document.getElementById("btnSaveGroupName");
+  if (btn) btn.disabled = true;
+
+  const courseId = conv.target_id;
+  try {
+    const res = await fetch(`/chat/group-messages/${courseId}/update-info`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        'Accept': 'application/json'
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+        Accept: "application/json",
       },
-      body: JSON.stringify({ name: newName.trim() })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        conv.name = data.data.name;
-        const nameEl = document.getElementById("chatHdrName");
-        if (nameEl) nameEl.textContent = conv.name;
-        renderConvs();
-        renderInfoContent(conv);
-        showToast("Nama grup berhasil diperbarui!", "success");
-      } else {
-        showToast(data.message || "Gagal memperbarui nama grup.", "error");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      showToast("Terjadi kesalahan sistem.", "error");
+      body: JSON.stringify({ name: newName }),
     });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      conv.name = data.data.name;
+      const nameEl = document.getElementById("chatHdrName");
+      if (nameEl) nameEl.textContent = conv.name;
+      renderConvs();
+      renderInfoContent(conv);
+      closeModal("modalEditGroupName");
+      showToast("Nama grup berhasil diperbarui!", "success");
+    } else {
+      showToast(data.message || "Gagal memperbarui nama grup.", "error");
+    }
+  } catch (err) {
+    showToast("Terjadi kesalahan saat menyimpan nama grup.", "error");
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -1530,98 +1509,286 @@ function editGroupDescription() {
   const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
   if (!conv || conv.type !== "group") return;
 
-  const newDesc = prompt("Ubah Deskripsi Grup:", conv.description || "");
-  if (newDesc !== null) {
-    showToast("Menyimpan deskripsi grup...", "info");
-    const courseId = conv.id.replace('group_', '');
-    
-    fetch(`/chat/group-messages/${courseId}/update-info`, {
-      method: 'POST',
+  const textarea = document.getElementById("inputEditGroupDesc");
+  if (textarea) textarea.value = conv.description || "";
+  openModal("modalEditGroupDesc");
+  setTimeout(() => textarea && textarea.focus(), 100);
+}
+
+async function submitEditGroupDesc() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv || conv.type !== "group") return;
+
+  const textarea = document.getElementById("inputEditGroupDesc");
+  const newDesc = textarea ? textarea.value.trim() : "";
+
+  const btn = document.getElementById("btnSaveGroupDesc");
+  if (btn) btn.disabled = true;
+
+  const courseId = conv.target_id;
+  try {
+    const res = await fetch(`/chat/group-messages/${courseId}/update-info`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        'Accept': 'application/json'
+        "Content-Type": "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+        Accept: "application/json",
       },
-      body: JSON.stringify({ description: newDesc.trim() || "Tidak ada deskripsi." })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        conv.description = data.data.description;
-        renderInfoContent(conv);
-        showToast("Deskripsi grup berhasil diperbarui!", "success");
-      } else {
-        showToast(data.message || "Gagal memperbarui deskripsi grup.", "error");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      showToast("Terjadi kesalahan sistem.", "error");
+      body: JSON.stringify({ description: newDesc || "Tidak ada deskripsi." }),
     });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      conv.description = data.data.description;
+      renderInfoContent(conv);
+      closeModal("modalEditGroupDesc");
+      showToast("Deskripsi grup berhasil diperbarui!", "success");
+    } else {
+      showToast(data.message || "Gagal memperbarui deskripsi grup.", "error");
+    }
+  } catch (err) {
+    showToast("Terjadi kesalahan saat menyimpan deskripsi grup.", "error");
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
-function openMediaGalleryModal() {
+let ACTIVE_GALLERY_DATA = { media: [], docs: [], links: [] };
+
+async function openMediaGalleryModal() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv) return;
+
   openModal("modalMediaGallery");
+  const content = document.getElementById("galleryTabContent");
+  if (content) {
+    content.innerHTML = `
+      <div style="text-align:center; padding:2.5rem 1rem; color:#64748b;">
+        <span class="material-symbols-outlined" style="font-size:2rem; animation:spin 1s linear infinite;">progress_activity</span>
+        <p style="margin-top:0.5rem; font-size:0.85rem;">Memuat galeri berkas...</p>
+      </div>`;
+  }
+
+  try {
+    const res = await fetch(`/chat/media?target_id=${conv.target_id}&type=${conv.type}`, {
+      headers: { Accept: "application/json" },
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      ACTIVE_GALLERY_DATA = {
+        media: data.media || [],
+        docs: data.docs || [],
+        links: data.links || [],
+      };
+    } else {
+      ACTIVE_GALLERY_DATA = { media: [], docs: [], links: [] };
+    }
+  } catch (err) {
+    ACTIVE_GALLERY_DATA = { media: [], docs: [], links: [] };
+  }
+
   switchGalleryTab("media");
 }
 
 function switchGalleryTab(tabId) {
-  // Update Buttons
-  document.getElementById("tabBtnMedia").classList.remove("active");
-  document.getElementById("tabBtnDocs").classList.remove("active");
-  document.getElementById("tabBtnLinks").classList.remove("active");
-  
-  if (tabId === "media") document.getElementById("tabBtnMedia").classList.add("active");
-  else if (tabId === "docs") document.getElementById("tabBtnDocs").classList.add("active");
-  else if (tabId === "links") document.getElementById("tabBtnLinks").classList.add("active");
+  const btnMedia = document.getElementById("tabBtnMedia");
+  const btnDocs = document.getElementById("tabBtnDocs");
+  const btnLinks = document.getElementById("tabBtnLinks");
+  if (btnMedia) btnMedia.classList.remove("active");
+  if (btnDocs) btnDocs.classList.remove("active");
+  if (btnLinks) btnLinks.classList.remove("active");
+
+  if (tabId === "media" && btnMedia) btnMedia.classList.add("active");
+  else if (tabId === "docs" && btnDocs) btnDocs.classList.add("active");
+  else if (tabId === "links" && btnLinks) btnLinks.classList.add("active");
 
   const content = document.getElementById("galleryTabContent");
   if (!content) return;
 
-  // Filter messages based on tab
-  // (In real app, you would fetch from DB, here we simulate from MESSAGES array)
-  // For UI simulation:
-  
   if (tabId === "media") {
+    if (ACTIVE_GALLERY_DATA.media.length === 0) {
+      content.innerHTML = `
+        <div style="text-align:center; padding:2.5rem 1rem; color:#64748b;">
+          <span class="material-symbols-outlined" style="font-size:2.5rem; opacity:0.4; margin-bottom:0.5rem;">photo_library</span>
+          <p style="font-weight:600; font-size:0.875rem;">Belum ada foto atau video</p>
+          <span style="font-size:0.75rem; opacity:0.8;">Kirim foto atau video dalam obrolan untuk melihatnya di sini.</span>
+        </div>`;
+      return;
+    }
+
     content.innerHTML = `
       <div class="gallery-grid-full">
-        <div class="gallery-item-card" onclick="showToast('Membuka Gambar')"><img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&w=200&h=200&fit=crop" alt="img"/></div>
-        <div class="gallery-item-card" onclick="showToast('Membuka Gambar')"><img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&w=200&h=200&fit=crop" alt="img"/></div>
-        <div class="gallery-item-card" onclick="showToast('Membuka Gambar')"><img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?ixlib=rb-4.0.3&w=200&h=200&fit=crop" alt="img"/></div>
-      </div>
-    `;
+        ${ACTIVE_GALLERY_DATA.media.map(m => `
+          <div class="gallery-item-card" onclick="window.open('${escapeHtml(m.url)}', '_blank')" title="${escapeHtml(m.name)}">
+            ${m.type === 'video' 
+              ? `<video src="${escapeHtml(m.url)}" style="width:100%;height:100%;object-fit:cover;"></video>`
+              : `<img src="${escapeHtml(m.url)}" alt="${escapeHtml(m.name)}" />`
+            }
+          </div>
+        `).join('')}
+      </div>`;
   } else if (tabId === "docs") {
+    if (ACTIVE_GALLERY_DATA.docs.length === 0) {
+      content.innerHTML = `
+        <div style="text-align:center; padding:2.5rem 1rem; color:#64748b;">
+          <span class="material-symbols-outlined" style="font-size:2.5rem; opacity:0.4; margin-bottom:0.5rem;">description</span>
+          <p style="font-weight:600; font-size:0.875rem;">Belum ada dokumen yang dibagikan</p>
+          <span style="font-size:0.75rem; opacity:0.8;">Dokumen PDF, Word, atau presentasi akan muncul di sini.</span>
+        </div>`;
+      return;
+    }
+
     content.innerHTML = `
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f1f5f9; border-radius:8px; cursor:pointer;" onclick="showToast('Membuka PDF')">
-          <span class="material-symbols-outlined" style="color:#ef4444; font-size:32px;">picture_as_pdf</span>
-          <div style="flex:1;">
-            <div style="font-weight:600; color:#0f172a; font-size:14px;">Materi Bab 1 - Pengantar.pdf</div>
-            <div style="font-size:12px; color:#64748b;">1.2 MB • Kemarin</div>
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f1f5f9; border-radius:8px; cursor:pointer;" onclick="showToast('Membuka DOCX')">
-          <span class="material-symbols-outlined" style="color:#2563eb; font-size:32px;">article</span>
-          <div style="flex:1;">
-            <div style="font-weight:600; color:#0f172a; font-size:14px;">Tugas Kelompok 3.docx</div>
-            <div style="font-size:12px; color:#64748b;">800 KB • 12 Ags</div>
-          </div>
-        </div>
-      </div>
-    `;
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${ACTIVE_GALLERY_DATA.docs.map(d => `
+          <a href="${escapeHtml(d.url)}" target="_blank" download="${escapeHtml(d.name)}" style="display:flex; align-items:center; gap:12px; padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; text-decoration:none; color:inherit; transition:background 0.15s ease;">
+            <span class="material-symbols-outlined" style="color:#ef4444; font-size:28px;">picture_as_pdf</span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:700; color:#0f172a; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(d.name)}</div>
+              <div style="font-size:11px; color:#64748b;">Dibagikan oleh ${escapeHtml(d.sender || 'Teman')} • ${escapeHtml(d.time || 'Baru saja')}</div>
+            </div>
+            <span class="material-symbols-outlined" style="color:#6366f1; font-size:20px;">download</span>
+          </a>
+        `).join('')}
+      </div>`;
   } else if (tabId === "links") {
+    if (ACTIVE_GALLERY_DATA.links.length === 0) {
+      content.innerHTML = `
+        <div style="text-align:center; padding:2.5rem 1rem; color:#64748b;">
+          <span class="material-symbols-outlined" style="font-size:2.5rem; opacity:0.4; margin-bottom:0.5rem;">link</span>
+          <p style="font-weight:600; font-size:0.875rem;">Belum ada tautan link</p>
+          <span style="font-size:0.75rem; opacity:0.8;">Tautan web atau materi yang dikirim dalam obrolan akan muncul di sini.</span>
+        </div>`;
+      return;
+    }
+
     content.innerHTML = `
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f1f5f9; border-radius:8px; cursor:pointer;" onclick="window.open('https://github.com', '_blank')">
-          <span class="material-symbols-outlined" style="color:#10b981; font-size:32px;">link</span>
-          <div style="flex:1;">
-            <div style="font-weight:600; color:#0f172a; font-size:14px; text-decoration:underline;">https://github.com/studymatch/repo</div>
-            <div style="font-size:12px; color:#64748b;">Dibagikan oleh Budi • 3 Hari lalu</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${ACTIVE_GALLERY_DATA.links.map(l => `
+          <div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer;" onclick="window.open('${escapeHtml(l.url)}', '_blank')">
+            <span class="material-symbols-outlined" style="color:#10b981; font-size:28px;">link</span>
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:700; color:#2563eb; font-size:13px; text-decoration:underline; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(l.url)}</div>
+              <div style="font-size:11px; color:#64748b;">Dikirim oleh ${escapeHtml(l.sender || 'Teman')} • ${escapeHtml(l.time || 'Baru saja')}</div>
+            </div>
           </div>
-        </div>
-      </div>
-    `;
+        `).join('')}
+      </div>`;
+  }
+}
+
+/* ─── Create Group Modal ─── */
+function openCreateGroupModal() {
+  const picker = document.getElementById("createGroupMembersPicker");
+  if (picker) {
+    const dms = CONVERSATIONS.filter(c => c.type === "dm");
+    if (dms.length === 0) {
+      picker.innerHTML = `<div style="color:#64748b; font-size:0.85rem; padding:0.5rem 0;">Belum ada teman belajar yang terhubung. Cari teman di menu Discovery terlebih dahulu!</div>`;
+    } else {
+      picker.innerHTML = dms.map(c => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;border-bottom:1px solid #f1f5f9;">
+          <input type="checkbox" value="${c.target_id}" class="create-group-member-cb" />
+          <div class="conv-av" style="width:28px;height:28px;">
+            <img src="${escapeHtml(c.avatar || '')}" alt="${escapeHtml(c.name)}" />
+          </div>
+          <span style="font-size:0.875rem;color:#1e293b;font-weight:600;">${escapeHtml(c.name)}</span>
+        </label>
+      `).join("");
+    }
+  }
+  openModal("modalCreateGroup");
+}
+
+async function submitCreateGroup() {
+  const nameInput = document.getElementById("newGroupName");
+  const descInput = document.getElementById("newGroupDesc");
+  const name = nameInput ? nameInput.value.trim() : "";
+  const desc = descInput ? descInput.value.trim() : "";
+
+  if (!name) {
+    showToast("Nama grup belajar tidak boleh kosong.", "info");
+    return;
+  }
+
+  const selectedCbs = document.querySelectorAll(".create-group-member-cb:checked");
+  const memberIds = Array.from(selectedCbs).map(cb => parseInt(cb.value));
+
+  const btn = document.getElementById("btnSubmitCreateGroup");
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch("/chat/groups", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({
+        name: name,
+        description: desc,
+        member_ids: memberIds,
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      CONVERSATIONS.unshift(data.group);
+      closeModal("modalCreateGroup");
+      if (nameInput) nameInput.value = "";
+      if (descInput) descInput.value = "";
+      renderConvs();
+      selectConv(data.group.id);
+      showToast(data.message || "Grup berhasil dibuat!", "success");
+    } else {
+      showToast(data.message || "Gagal membuat grup.", "error");
+    }
+  } catch (err) {
+    showToast("Terjadi kesalahan saat membuat grup.", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ─── Submit Report ─── */
+async function submitReport() {
+  const conv = CONVERSATIONS.find((c) => String(c.id) === String(activeConvId));
+  if (!conv) return;
+
+  const reasonEl = document.getElementById("reportReason");
+  const detailsEl = document.getElementById("reportDetails");
+  const reason = reasonEl ? reasonEl.value : "";
+  const details = detailsEl ? detailsEl.value : "";
+
+  if (!reason) {
+    showToast("Silakan pilih alasan laporan terlebih dahulu.", "info");
+    return;
+  }
+
+  try {
+    const res = await fetch("/chat/report", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-CSRF-TOKEN": getCsrfToken(),
+      },
+      body: JSON.stringify({
+        type: conv.type === "group" ? "group" : "user",
+        target_id: conv.target_id,
+        reason: reason,
+        details: details,
+      }),
+    });
+
+    const data = await res.json();
+    closeModal("modalReport");
+    if (reasonEl) reasonEl.value = "";
+    if (detailsEl) detailsEl.value = "";
+    showToast(data.message || "Laporan Anda telah dikirim.", "success");
+  } catch (err) {
+    closeModal("modalReport");
+    showToast("Laporan Anda telah dicatat oleh sistem moderasi.", "success");
   }
 }
 
@@ -1672,14 +1839,60 @@ window.closeModal = closeModal;
 window.toggleFilterDropdown = toggleFilterDropdown;
 window.closeFilterDropdown = closeFilterDropdown;
 window.editGroupName = editGroupName;
+window.submitEditGroupName = submitEditGroupName;
 window.editGroupDescription = editGroupDescription;
+window.submitEditGroupDesc = submitEditGroupDesc;
 window.openMediaGalleryModal = openMediaGalleryModal;
 window.switchGalleryTab = switchGalleryTab;
+window.openCreateGroupModal = openCreateGroupModal;
+window.submitCreateGroup = submitCreateGroup;
+
+/* ─── Horizontal Filter Chips Mouse Scroll & Drag ─── */
+function initChipsDragScroll() {
+  const container = document.getElementById("filterChips");
+  if (!container) return;
+
+  // 1. Mouse wheel horizontal scrolling
+  container.addEventListener("wheel", (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY * 0.8;
+    }
+  }, { passive: false });
+
+  // 2. Mouse Drag-to-Scroll
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  container.addEventListener("mousedown", (e) => {
+    isDown = true;
+    container.classList.add("dragging");
+    startX = e.pageX - container.offsetLeft;
+    scrollLeft = container.scrollLeft;
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isDown) {
+      isDown = false;
+      container.classList.remove("dragging");
+    }
+  });
+
+  container.addEventListener("mousemove", (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    container.scrollLeft = scrollLeft - walk;
+  });
+}
 
 /* ─── Initialization ─── */
 document.addEventListener("DOMContentLoaded", () => {
   readInitialData();
   renderCustomListChips();
+  initChipsDragScroll();
   renderConvs();
   if (activeConvId) {
     selectConv(activeConvId);

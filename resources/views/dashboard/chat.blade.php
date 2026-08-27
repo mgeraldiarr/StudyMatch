@@ -21,10 +21,13 @@
       <div class="conv-header-top">
         <h2 class="conv-title">Pesan</h2>
         <div class="conv-header-actions">
+          <button class="btn btn-icon-only btn-ghost" title="Buat Grup Belajar Baru" onclick="openCreateGroupModal()">
+            <span class="material-symbols-outlined">group_add</span>
+          </button>
           <button class="btn btn-icon-only btn-ghost" title="Daftar Berbintang" onclick="openStarredMessagesModal()">
             <span class="material-symbols-outlined">star</span>
           </button>
-          <button class="btn btn-icon-only btn-ghost" title="Buat Daftar Baru" onclick="openCustomListModal()">
+          <button class="btn btn-icon-only btn-ghost" title="Buat Filter Daftar Baru" onclick="openCustomListModal()">
             <span class="material-symbols-outlined">playlist_add</span>
           </button>
         </div>
@@ -190,7 +193,7 @@
     <div class="modal-header-icon bg-teal">
       <span class="material-symbols-outlined">timer</span>
     </div>
-    <div>
+    <div class="modal-header-text">
       <h3>Pesan Sementara</h3>
       <p class="modal-sub">Tingkatkan privasi &amp; hemat penyimpanan perangkat</p>
     </div>
@@ -258,7 +261,7 @@
     <div class="modal-header-icon bg-purple">
       <span class="material-symbols-outlined">playlist_add</span>
     </div>
-    <div>
+    <div class="modal-header-text">
       <h3>Buat Daftar Obrolan Baru</h3>
       <p class="modal-sub">Kelola dan kelompokkan obrolan sesuai kebutuhanmu</p>
     </div>
@@ -289,7 +292,7 @@
     <div class="modal-header-icon bg-blue">
       <span class="material-symbols-outlined">link</span>
     </div>
-    <div>
+    <div class="modal-header-text">
       <h3>Undang via Tautan Grup</h3>
       <p class="modal-sub">Bagikan tautan ini kepada teman sekelasmu</p>
     </div>
@@ -329,7 +332,7 @@
     <div class="modal-header-icon bg-red" id="confirmIcon">
       <span class="material-symbols-outlined">warning</span>
     </div>
-    <div>
+    <div class="modal-header-text">
       <h3 id="confirmTitle">Konfirmasi Tindakan</h3>
       <p class="modal-sub" id="confirmSubtitle">Tindakan ini tidak dapat dibatalkan</p>
     </div>
@@ -353,7 +356,7 @@
     <div class="modal-header-icon bg-amber">
       <span class="material-symbols-outlined">flag</span>
     </div>
-    <div>
+    <div class="modal-header-text">
       <h3>Laporkan ke StudyMatch</h3>
       <p class="modal-sub">Bantu kami menjaga lingkungan belajar yang aman</p>
     </div>
@@ -391,7 +394,7 @@
     <div class="modal-header-icon bg-amber">
       <span class="material-symbols-outlined">star</span>
     </div>
-    <div>
+    <div class="modal-header-text">
       <h3>Pesan Berbintang</h3>
       <p class="modal-sub">Koleksi catatan dan pesan penting yang Anda tandai</p>
     </div>
@@ -406,7 +409,6 @@
     </div>
     <div class="starred-messages-list" id="starredMessagesContainer"></div>
   </div>
-  </div>
 </div>
 
 <!-- 7. Modal Galeri Media, Tautan & Dokumen -->
@@ -416,11 +418,11 @@
     <div class="modal-header-icon bg-blue">
       <span class="material-symbols-outlined">perm_media</span>
     </div>
-    <div style="flex:1">
+    <div class="modal-header-text">
       <h3 style="font-size:1.1rem;font-weight:800;color:#0f172a;">Media, Tautan &amp; Dokumen</h3>
-      <p style="font-size:0.75rem;color:#64748b;">Semua berkas materi dan tautan yang dibagikan dalam obrolan ini</p>
+      <p class="modal-sub">Semua berkas materi dan tautan yang dibagikan dalam obrolan ini</p>
     </div>
-    <button class="btn btn-icon-only btn-ghost" onclick="closeModal('modalMediaGallery')">
+    <button class="modal-close-btn" onclick="closeModal('modalMediaGallery')">
       <span class="material-symbols-outlined">close</span>
     </button>
   </div>
@@ -431,6 +433,119 @@
   </div>
   <div class="modal-panel-body" style="padding:1.25rem; min-height: 240px; max-height: 420px; overflow-y: auto;">
     <div id="galleryTabContent"></div>
+  </div>
+</div>
+
+<!-- 8. Modal Buat Grup Belajar Baru -->
+<div class="modal-overlay" id="modalCreateGroupOverlay" onclick="closeModal('modalCreateGroup')"></div>
+<div class="modal-panel wa-modal" id="modalCreateGroup">
+  <div class="modal-panel-header">
+    <div class="modal-header-icon bg-teal">
+      <span class="material-symbols-outlined">group_add</span>
+    </div>
+    <div class="modal-header-text">
+      <h3>Buat Grup Belajar Baru</h3>
+      <p class="modal-sub">Mulai ruang belajar &amp; diskusi bersama teman</p>
+    </div>
+    <button class="modal-close-btn" onclick="closeModal('modalCreateGroup')">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+  <div class="modal-panel-body">
+    <div class="sess-form-group">
+      <label class="sess-label" for="newGroupName">Nama Grup Mata Kuliah / Belajar</label>
+      <input class="sess-input" id="newGroupName" type="text" placeholder="cth. Kelompok Kalkulus III, Belajar Python" required>
+    </div>
+    <div class="sess-form-group">
+      <label class="sess-label" for="newGroupDesc">Deskripsi Grup (Opsional)</label>
+      <textarea class="sess-input" id="newGroupDesc" rows="2" placeholder="Jelaskan topik materi atau tujuan diskusi grup ini…"></textarea>
+    </div>
+    <div class="sess-form-group">
+      <label class="sess-label">Pilih Teman Belajar untuk Ditambahkan:</label>
+      <div class="select-contacts-list" id="createGroupMembersPicker"></div>
+    </div>
+  </div>
+  <div class="modal-panel-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeModal('modalCreateGroup')">Batal</button>
+    <button type="button" class="btn btn-primary" id="btnSubmitCreateGroup" onclick="submitCreateGroup()">Buat Grup</button>
+  </div>
+</div>
+
+<!-- 9. Modal Simulasi Panggilan Suara / Video -->
+<div class="modal-overlay" id="modalCallOverlay" onclick="closeModal('modalCall')"></div>
+<div class="modal-panel wa-modal modal-call" id="modalCall" style="max-width:360px; text-align:center; padding:2rem 1.5rem;">
+  <div class="call-modal-body">
+    <div class="call-avatar-wrap" style="width:96px; height:96px; margin:0 auto 1.25rem; border-radius:50%; overflow:hidden; border:3px solid #6366f1; box-shadow:0 10px 25px rgba(99,102,241,0.25);">
+      <img id="callAvatar" src="" alt="" style="width:100%; height:100%; object-fit:cover;" />
+    </div>
+    <h3 id="callName" style="font-size:1.25rem; font-weight:800; color:#0f172a; margin-bottom:0.35rem;">Nama Kontak</h3>
+    <p id="callStatus" style="font-size:0.875rem; color:#64748b; margin-bottom:2rem;">Menghubungkan…</p>
+    
+    <div class="call-action-btns" style="display:flex; justify-content:center; gap:1rem;">
+      <button class="btn btn-icon-only" id="btnCallMute" onclick="toggleCallMute()" title="Bisukan Mikrofon" style="width:48px; height:48px; border-radius:50%; background:#334155; color:#fff;">
+        <span class="material-symbols-outlined">mic_off</span>
+      </button>
+      <button class="btn btn-icon-only" id="btnCallSpeaker" onclick="toggleCallSpeaker()" title="Speaker" style="width:48px; height:48px; border-radius:50%; background:#334155; color:#fff;">
+        <span class="material-symbols-outlined">volume_up</span>
+      </button>
+      <button class="btn btn-icon-only" onclick="endCall()" title="Akhiri Panggilan" style="width:48px; height:48px; border-radius:50%; background:#ef4444; color:#fff; box-shadow:0 4px 12px rgba(239,68,68,0.4);">
+        <span class="material-symbols-outlined">call_end</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 10. Modal Ubah Nama Grup -->
+<div class="modal-overlay" id="modalEditGroupNameOverlay" onclick="closeModal('modalEditGroupName')"></div>
+<div class="modal-panel wa-modal modal-confirm" id="modalEditGroupName">
+  <div class="modal-panel-header">
+    <div class="modal-header-icon bg-teal">
+      <span class="material-symbols-outlined">edit</span>
+    </div>
+    <div class="modal-header-text">
+      <h3>Ubah Nama Grup</h3>
+      <p class="modal-sub">Gunakan nama yang mudah dikenali oleh anggota</p>
+    </div>
+    <button class="modal-close-btn" onclick="closeModal('modalEditGroupName')">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+  <div class="modal-panel-body">
+    <div class="sess-form-group" style="margin-bottom:0;">
+      <label class="sess-label" for="inputEditGroupName">Nama Grup Belajar</label>
+      <input class="sess-input" id="inputEditGroupName" type="text" placeholder="Masukkan nama grup baru…" maxlength="100" required />
+    </div>
+  </div>
+  <div class="modal-panel-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeModal('modalEditGroupName')">Batal</button>
+    <button type="button" class="btn btn-primary" id="btnSaveGroupName" onclick="submitEditGroupName()">Simpan Perubahan</button>
+  </div>
+</div>
+
+<!-- 11. Modal Ubah Deskripsi Grup -->
+<div class="modal-overlay" id="modalEditGroupDescOverlay" onclick="closeModal('modalEditGroupDesc')"></div>
+<div class="modal-panel wa-modal" id="modalEditGroupDesc">
+  <div class="modal-panel-header">
+    <div class="modal-header-icon bg-blue">
+      <span class="material-symbols-outlined">description</span>
+    </div>
+    <div class="modal-header-text">
+      <h3>Ubah Deskripsi Grup</h3>
+      <p class="modal-sub">Jelaskan topik materi atau jadwal belajar bersama</p>
+    </div>
+    <button class="modal-close-btn" onclick="closeModal('modalEditGroupDesc')">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+  <div class="modal-panel-body">
+    <div class="sess-form-group" style="margin-bottom:0;">
+      <label class="sess-label" for="inputEditGroupDesc">Deskripsi / Catatan Diskusi</label>
+      <textarea class="sess-input" id="inputEditGroupDesc" rows="4" placeholder="Tuliskan deskripsi grup belajar di sini…" maxlength="500"></textarea>
+    </div>
+  </div>
+  <div class="modal-panel-footer">
+    <button type="button" class="btn btn-ghost" onclick="closeModal('modalEditGroupDesc')">Batal</button>
+    <button type="button" class="btn btn-primary" id="btnSaveGroupDesc" onclick="submitEditGroupDesc()">Simpan Deskripsi</button>
   </div>
 </div>
 

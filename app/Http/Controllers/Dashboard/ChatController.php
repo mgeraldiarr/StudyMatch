@@ -476,4 +476,307 @@ class ChatController extends Controller
             ],
         ], 201);
     }
+
+    /**
+     * Get detailed dynamic profile and shared context info for a 1-on-1 contact.
+     */
+    public function getContactInfo(Request $request, User $user): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if (!$this->usersHaveAcceptedMatch($currentUser, $user)) {
+            return response()->json(['success' => false, 'message' => 'Anda tidak terhubung dengan pengguna ini'], 403);
+        }
+
+        // 1. Shared / Mutual Courses
+        $mutualCourses = $currentUser->courses()
+            ->whereIn('courses.id', $user->courses()->pluck('courses.id'))
+            ->withCount('users')
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'category' => $c->category ?: 'Mata Kuliah',
+                    'members_count' => $c->users_count,
+                ];
+            });
+
+        // 2. Shared Media items between the two users
+        $sharedMedia = Message::where(function ($q) use ($currentUser, $user) {
+            $q->where('sender_id', $currentUser->id)->where('receiver_id', $user->id);
+        })->orWhere(function ($q) use ($currentUser, $user) {
+            $q->where('sender_id', $user->id)->where('receiver_id', $currentUser->id);
+        })
+        ->whereNotNull('attachment_path')
+        ->latest()
+        ->take(12)
+        ->get()
+        ->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'url' => asset('storage/' . $m->attachment_path),
+                'type' => $m->attachment_type,
+                'name' => $m->attachment_name ?: 'Berkas',
+                'time' => $m->created_at->diffForHumans(null, true),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'contact' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'university' => $user->university ?: 'Universitas Indonesia',
+                'major' => $user->major ?: 'Ilmu Komputer',
+                'academic_year' => $user->academic_year ?: '2023',
+                'learning_style' => $user->learning_style ?: 'Visual & Problem Solving',
+                'bio' => $user->bio ?: 'Siap berdiskusi materi perkuliahan dan tugas bersama.',
+                'avatar' => $user->avatar ?: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28',
+                'is_online' => (bool) $user->is_online,
+            ],
+            'mutual_courses' => $mutualCourses,
+            'shared_media' => $sharedMedia,
+        ]);
+    }
+
+    /**
+     * Get detailed dynamic info for a group / course.
+     */
+    public function getGroupInfo(Request $request, Course $course): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if (!$this->userBelongsToCourse($currentUser, $course)) {
+            return response()->json(['success' => false, 'message' => 'Anda bukan anggota grup ini'], 403);
+        }
+
+        $members = $course->users()
+            ->select('users.id', 'users.name', 'users.avatar', 'users.university', 'users.major', 'users.is_online')
+            ->get()
+            ->map(function ($u) use ($currentUser) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'avatar' => $u->avatar ?: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKcbPLFItN4SS7U-4BDCucakx73AWp-tucJqKrRd9vEuCX5yLXlCktjciJScuZHyP-emTCoBNUo7FjAfOMbDa1JCGcXMEYiwS09IRbhhtpW0IGJygf9Oou1rX953pIfMPu85Vin_HjMLsQwQQSja04NklK22lylJjf_iyNlN_w587boVf_VcttYg4e34xELfP0FGg2S2TJHq5fGjWtBvPK-sYrQn2GbtUTfQYTXTnXAvr5Rs7e9cCa5LdaLIYMOIcZfV2XeoXyK28',
+                    'university' => $u->university ?: 'Universitas Indonesia',
+                    'major' => $u->major ?: 'Mahasiswa',
+                    'is_online' => (bool) $u->is_online,
+                    'is_me' => $u->id === $currentUser->id,
+                ];
+            });
+
+        $sharedMedia = Message::where('course_id', $course->id)
+            ->whereNotNull('attachment_path')
+            ->latest()
+            ->take(12)
+            ->get()
+            ->map(function ($m) {
+                return [
+                    'id' => $m->id,
+                    'url' => asset('storage/' . $m->attachment_path),
+                    'type' => $m->attachment_type,
+                    'name' => $m->attachment_name ?: 'Berkas',
+                    'time' => $m->created_at->diffForHumans(null, true),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'group' => [
+                'id' => $course->id,
+                'name' => $course->name,
+                'code' => $course->code ?: 'SM-' . $course->id,
+                'category' => $course->category ?: 'Mata Kuliah',
+                'description' => $course->description ?: 'Forum diskusi materi kuliah, koordinasi tugas kelompok, dan sesi belajar bersama.',
+                'created_at' => $course->created_at ? $course->created_at->translatedFormat('d F Y') : '12 Agustus 2026',
+                'members_count' => $members->count(),
+            ],
+            'members' => $members,
+            'shared_media' => $sharedMedia,
+        ]);
+    }
+
+    /**
+     * Get all media, documents, and links for active conversation.
+     */
+    public function getSharedMedia(Request $request): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        $type = $request->query('type', 'dm'); // 'group' or 'dm'
+        $targetId = $request->query('target_id');
+
+        if (!$targetId) {
+            return response()->json(['success' => false, 'message' => 'Parameter target_id diperlukan'], 400);
+        }
+
+        if ($type === 'group') {
+            $course = Course::findOrFail($targetId);
+            if (!$this->userBelongsToCourse($currentUser, $course)) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            }
+
+            $messages = Message::where('course_id', $course->id)->with('sender')->latest()->get();
+        } else {
+            $partner = User::findOrFail($targetId);
+            if (!$this->usersHaveAcceptedMatch($currentUser, $partner)) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak'], 403);
+            }
+
+            $messages = Message::where(function ($q) use ($currentUser, $partner) {
+                $q->where('sender_id', $currentUser->id)->where('receiver_id', $partner->id);
+            })->orWhere(function ($q) use ($currentUser, $partner) {
+                $q->where('sender_id', $partner->id)->where('receiver_id', $currentUser->id);
+            })->with('sender')->latest()->get();
+        }
+
+        $mediaList = [];
+        $docsList = [];
+        $linksList = [];
+
+        foreach ($messages as $msg) {
+            if ($msg->attachment_path) {
+                $item = [
+                    'id' => $msg->id,
+                    'url' => asset('storage/' . $msg->attachment_path),
+                    'type' => $msg->attachment_type,
+                    'name' => $msg->attachment_name ?: 'Berkas',
+                    'sender' => $msg->sender ? $msg->sender->name : 'Pengguna',
+                    'time' => $msg->created_at->diffForHumans(null, true),
+                ];
+
+                if ($msg->attachment_type === 'image' || $msg->attachment_type === 'video') {
+                    $mediaList[] = $item;
+                } else {
+                    $docsList[] = $item;
+                }
+            }
+
+            // Extract links from message text (regex matching URLs)
+            if ($msg->message && preg_match_all('/https?:\/\/[^\s]+/', $msg->message, $matches)) {
+                foreach ($matches[0] as $url) {
+                    $linksList[] = [
+                        'id' => $msg->id,
+                        'url' => $url,
+                        'sender' => $msg->sender ? $msg->sender->name : 'Pengguna',
+                        'time' => $msg->created_at->diffForHumans(null, true),
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'media' => $mediaList,
+            'docs' => $docsList,
+            'links' => $linksList,
+        ]);
+    }
+
+    /**
+     * Create a new custom study group and enroll creator and selected partners.
+     */
+    public function createGroup(Request $request): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:150'],
+            'description' => ['nullable', 'string', 'max:500'],
+            'member_ids' => ['nullable', 'array'],
+            'member_ids.*' => ['integer', 'exists:users,id'],
+        ]);
+
+        $course = Course::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? 'Grup belajar dan diskusi tugas.',
+            'category' => 'Kelompok Belajar',
+            'code' => 'GRP-' . strtoupper(substr(uniqid(), -5)),
+        ]);
+
+        // Attach creator
+        $course->users()->attach($currentUser->id);
+
+        // Attach selected connected members
+        if (!empty($validated['member_ids'])) {
+            foreach ($validated['member_ids'] as $memberId) {
+                $partner = User::find($memberId);
+                if ($partner && $this->usersHaveAcceptedMatch($currentUser, $partner)) {
+                    $course->users()->syncWithoutDetaching([$partner->id]);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Grup '{$course->name}' berhasil dibuat!",
+            'group' => [
+                'id' => 'group_' . $course->id,
+                'target_id' => $course->id,
+                'type' => 'group',
+                'icon' => 'groups',
+                'color' => 'teal',
+                'name' => $course->name,
+                'description' => $course->description,
+                'lastMsg' => 'Grup belajar baru telah dibuat!',
+                'time' => 'Baru saja',
+                'online' => $course->users()->count(),
+                'active' => true,
+            ],
+        ], 201);
+    }
+
+    /**
+     * Invite a connected friend into an existing group.
+     */
+    public function inviteToGroup(Request $request, Course $course): JsonResponse
+    {
+        /** @var User $currentUser */
+        $currentUser = Auth::user();
+
+        if (!$this->userBelongsToCourse($currentUser, $course)) {
+            return response()->json(['success' => false, 'message' => 'Anda bukan anggota grup ini'], 403);
+        }
+
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $invitee = User::findOrFail($validated['user_id']);
+        if (!$this->usersHaveAcceptedMatch($currentUser, $invitee)) {
+            return response()->json(['success' => false, 'message' => 'Hanya teman belajar yang terhubung yang dapat diundang'], 403);
+        }
+
+        $course->users()->syncWithoutDetaching([$invitee->id]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$invitee->name} berhasil ditambahkan ke grup {$course->name}.",
+        ]);
+    }
+
+    /**
+     * Submit a report for a user or group.
+     */
+    public function submitReport(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'string', 'in:user,group'],
+            'target_id' => ['required'],
+            'reason' => ['required', 'string', 'max:255'],
+            'details' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        // In a full application, save to reports table or dispatch notification
+        return response()->json([
+            'success' => true,
+            'message' => 'Laporan Anda telah diterima oleh tim moderasi StudyMatch. Terima kasih atas bantuan Anda menjaga komunitas yang aman.',
+        ]);
+    }
 }
